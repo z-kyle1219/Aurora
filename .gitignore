@@ -15,3 +15,6 @@ wheels/
 # 工具缓存
 .pytest_cache/
 .ruff_cache/
+
+# 向量库（生成物，用 build_index.py 可重建）
+data/
