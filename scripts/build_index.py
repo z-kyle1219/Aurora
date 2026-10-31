@@ -12,9 +12,11 @@ from pathlib import Path
 # 用脚本自身位置定位路径，避免依赖「当前工作目录」在哪
 AURORA_ROOT = Path(__file__).resolve().parent.parent          # aurora/
 COURSEWARE_DIR = AURORA_ROOT.parent / "courseware_md"         # 课件在项目上一级
+CARDS_FILE = AURORA_ROOT / "knowledge" / "formula_cards.md"   # 公式卡片（教材复现）
 INDEX_DIR = AURORA_ROOT / "data" / "index"                    # 向量库落盘位置
 
 from aurora.chunker import chunk_file
+from aurora.card_loader import load_cards
 from aurora.embedder import encode_passages
 from aurora.vector_store import VectorStore
 
@@ -33,6 +35,14 @@ def main() -> int:
         chunks = chunk_file(f)
         all_chunks.extend(chunks)
         print(f"  {f.name:<30} -> {len(chunks):>4} 块")
+
+    # 第一步补：公式卡片（教材复现，第二层知识库，与课件块混入同一向量库）
+    if CARDS_FILE.exists():
+        cards = load_cards(CARDS_FILE)
+        all_chunks.extend(cards)
+        print(f"  [公式卡片] {CARDS_FILE.name:<24} -> {len(cards):>4} 块")
+    else:
+        print(f"  未找到公式卡片 {CARDS_FILE.name}，跳过")
 
     print(f"\n共 {len(all_chunks)} 块，开始向量化（首次会自动下载模型，稍等）…")
 
