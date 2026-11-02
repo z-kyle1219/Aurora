@@ -51,11 +51,16 @@ def build_context(hits: list[SearchResult]) -> str:
 
 
 def ask_rag(question: str, store: VectorStore, top_k: int = 3,
-            history: list[dict] | None = None) -> tuple[str, list[SearchResult]]:
+            history: list[dict] | None = None,
+            system_prompt: str | None = None) -> tuple[str, list[SearchResult]]:
     """完整的 RAG 问答：检索 -> 拼上下文 -> 生成。返回 (回答, 命中的片段)。
 
     之所以把「命中的片段」也返回，是为了让调用方（demo / 界面）能把「检索到
     了什么」展示给用户看——这也是「可解释性」，评测时能用来算「引用命中率」。
+
+    system_prompt：可选，覆盖默认提示词。Router 分派后，负反馈走「决策树」、
+    稳压电源走「链式流程」，都复用这套检索、只换这里的提示词——能力（检索）
+    不变，编排（怎么引导模型用这些片段）不同。
     """
     hits = retrieve(store, question, top_k=top_k)
     if not hits:
@@ -68,7 +73,7 @@ def ask_rag(question: str, store: VectorStore, top_k: int = 3,
     )
 
     client = get_client()
-    messages = [{"role": "system", "content": RAG_SYSTEM_PROMPT}]
+    messages = [{"role": "system", "content": system_prompt or RAG_SYSTEM_PROMPT}]
     if history:
         messages.extend(history)
     messages.append({"role": "user", "content": user_message})
