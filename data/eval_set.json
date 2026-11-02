@@ -1,0 +1,86 @@
+[
+  {
+    "id": "opamp-1",
+    "question": "反相比例运算电路：R1=10kΩ，Rf=100kΩ，输入电压 ui=-0.5V，电源电压 ±15V。求输出电压 uo。",
+    "answer": "5V|5 V",
+    "circuit_type": "opamp",
+    "source": "demo_tools.py 复用"
+  },
+  {
+    "id": "opamp-2",
+    "question": "同相比例运算电路：R1=10kΩ，Rf=20kΩ，输入电压 ui=3V。求输出电压 uo。",
+    "answer": "9V|9 V",
+    "circuit_type": "opamp",
+    "source": "课程知识补充"
+  },
+  {
+    "id": "fb-1",
+    "question": "某测量仪表，要求输入电阻高、输出电压稳定，应选用哪种负反馈组态？",
+    "answer": "电压串联负反馈",
+    "circuit_type": "feedback",
+    "source": "7.5(1).md"
+  },
+  {
+    "id": "fb-2",
+    "question": "为获得一个电压控制电流源，应选用哪种负反馈组态？",
+    "answer": "电流串联负反馈",
+    "circuit_type": "feedback",
+    "source": "7.5(1).md"
+  },
+  {
+    "id": "fb-3",
+    "question": "为获得一个电流控制电流源，应选用哪种负反馈组态？",
+    "answer": "电流并联负反馈",
+    "circuit_type": "feedback",
+    "source": "7.5(1).md"
+  },
+  {
+    "id": "fb-4",
+    "question": "当信号源为高内阻的电流信号源，又要求放大电路的输出电压稳定，应选用哪种负反馈组态？",
+    "answer": "电压并联负反馈",
+    "circuit_type": "feedback",
+    "source": "7.5(1).md"
+  },
+  {
+    "id": "power-1",
+    "question": "直流稳压电源由哪几个基本部分组成？",
+    "answer": "整流",
+    "circuit_type": "power",
+    "source": "课程知识补充"
+  },
+  {
+    "id": "power-2",
+    "question": "在直流稳压电源中，滤波电路的作用是什么？",
+    "answer": "平滑",
+    "circuit_type": "power",
+    "source": "课程知识补充"
+  },
+  {
+    "id": "concept-1",
+    "question": "集成运放的输入级通常采用什么电路结构？",
+    "answer": "差分",
+    "circuit_type": "concept",
+    "source": "课程知识补充"
+  },
+  {
+    "id": "concept-2",
+    "question": "虚短是指运放两个输入端之间呈现什么关系？",
+    "answer": "电位相等|电压相等|等电位",
+    "circuit_type": "concept",
+    "source": "课程知识补充"
+  },
+  {
+    "id": "fallback-1",
+    "question": "请帮我分析这个 JK 触发器的时序逻辑。",
+    "answer": "超出|暂不支持|学习路径",
+    "circuit_type": "fallback",
+    "source": "课程知识补充"
+  },
+  {
+    "id": "fallback-2",
+    "question": "用 Python 写一个快速排序算法。",
+    "answer": "超出|暂不支持|学习路径",
+    "circuit_type": "fallback",
+    "source": "课程知识补充"
+  }
+]

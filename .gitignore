@@ -17,7 +17,7 @@ wheels/
 .ruff_cache/
 
 # 向量库（生成物，用 build_index.py 可重建）
-data/
+data/index/
 
 # 教材切图（扫描版原页，体积大，不进 git；源 PDF 在项目上一级）
 knowledge/pages/
