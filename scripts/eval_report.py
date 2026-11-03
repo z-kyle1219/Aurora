@@ -21,6 +21,7 @@ import sys
 import time
 from pathlib import Path
 
+from aurora.embedder import encode_query
 from aurora.judge import judge_answer, judge_hallucination
 from aurora.pipeline import run
 from aurora.router import TYPE_LABELS
@@ -48,6 +49,11 @@ def main() -> int:
     store = VectorStore.load(INDEX_DIR)
     print(f"已加载测试集 {len(cases)} 题，向量库 {len(store)} 块")
     print("=" * 70)
+
+    # 预热 embedding 模型：bge 首次加载约需一分钟，会污染第一题的延迟指标。
+    # 正式计时前先触发一次向量化，把冷启动排除在计时之外。
+    print("预热 embedding 模型（首次加载较慢，请稍候）…")
+    encode_query("预热：触发 bge 模型加载")
 
     rows = []
     for i, case in enumerate(cases, 1):

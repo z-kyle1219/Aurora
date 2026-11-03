@@ -44,7 +44,7 @@
   {
     "id": "power-1",
     "question": "直流稳压电源由哪几个基本部分组成？",
-    "answer": "整流",
+    "answer": "变压器、整流、滤波、稳压",
     "circuit_type": "power",
     "source": "课程知识补充"
   },
