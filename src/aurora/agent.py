@@ -62,49 +62,59 @@ def run_agent(question, tools=TOOLS, validators=None, max_rounds=5, temperature=
             tools=tools,
             temperature=temperature,
         )
-        msg = resp.choices[0].message
+        choice = resp.choices[0]
+        msg = choice.message
 
-        # 模型没有请求工具 → 这就是最终回答
-        if not msg.tool_calls:
-            return msg.content or "", trace
-
-        # 把「点菜」记录回 messages（assistant 角色，含 tool_calls）
-        messages.append({
-            "role": "assistant",
-            "content": msg.content or "",
-            "tool_calls": [
-                {
-                    "id": tc.id,
-                    "type": "function",
-                    "function": {
-                        "name": tc.function.name,
-                        "arguments": tc.function.arguments,
-                    },
-                }
-                for tc in msg.tool_calls
-            ],
-        })
-
-        # 逐个「上菜」：执行工具 → 结果（含校验警告）作为 tool 角色消息回传
-        for tc in msg.tool_calls:
-            name = tc.function.name
-            try:
-                arguments = json.loads(tc.function.arguments or "{}")
-            except json.JSONDecodeError:
-                arguments = {}
-
-            result = execute_tool(name, arguments)
-
-            validator = (validators or {}).get(name)
-            warning = validator(result) if validator else None
-            content = f"{result}\n[合理性校验] {warning}" if warning else result
-
-            trace.append({
-                "tool": name,
-                "arguments": arguments,
-                "result": result,
-                "warning": warning,
+        # 模型请求了工具 → 执行工具，把结果回传后进入下一轮
+        if msg.tool_calls:
+            # 把「点菜」记录回 messages（assistant 角色，含 tool_calls）
+            messages.append({
+                "role": "assistant",
+                "content": msg.content or "",
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    }
+                    for tc in msg.tool_calls
+                ],
             })
-            messages.append({"role": "tool", "tool_call_id": tc.id, "content": content})
+
+            # 逐个「上菜」：执行工具 → 结果（含校验警告）作为 tool 角色消息回传
+            for tc in msg.tool_calls:
+                name = tc.function.name
+                try:
+                    arguments = json.loads(tc.function.arguments or "{}")
+                except json.JSONDecodeError:
+                    arguments = {}
+
+                result = execute_tool(name, arguments)
+
+                validator = (validators or {}).get(name)
+                warning = validator(result) if validator else None
+                content = f"{result}\n[合理性校验] {warning}" if warning else result
+
+                trace.append({
+                    "tool": name,
+                    "arguments": arguments,
+                    "result": result,
+                    "warning": warning,
+                })
+                messages.append({"role": "tool", "tool_call_id": tc.id, "content": content})
+
+        # 模型直接返回文本 → 最终回答
+        elif msg.content:
+            return msg.content, trace
+
+        # 既没调工具、也没生成内容：区分「长度截断」与其它异常
+        elif choice.finish_reason == "length":
+            raise RuntimeError("模型输出达到长度限制")
+
+        else:
+            raise RuntimeError("模型没有返回有效内容")
 
     return "（已达到最大工具调用轮数，仍未得到最终回答）", trace
