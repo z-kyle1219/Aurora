@@ -52,7 +52,8 @@ def build_context(hits: list[SearchResult]) -> str:
 
 def ask_rag(question: str, store: VectorStore, top_k: int = 3,
             history: list[dict] | None = None,
-            system_prompt: str | None = None) -> tuple[str, list[SearchResult]]:
+            system_prompt: str | None = None,
+            query: str | None = None) -> tuple[str, list[SearchResult]]:
     """完整的 RAG 问答：检索 -> 拼上下文 -> 生成。返回 (回答, 命中的片段)。
 
     之所以把「命中的片段」也返回，是为了让调用方（demo / 界面）能把「检索到
@@ -61,8 +62,14 @@ def ask_rag(question: str, store: VectorStore, top_k: int = 3,
     system_prompt：可选，覆盖默认提示词。Router 分派后，负反馈走「决策树」、
     稳压电源走「链式流程」，都复用这套检索、只换这里的提示词——能力（检索）
     不变，编排（怎么引导模型用这些片段）不同。
+
+    query：可选，专门用于检索的问句（通常来自 rewrite.rewrite_question 改写的
+    独立问题）。**只影响检索，不影响生成**——生成仍然看 question + history。
+    多轮追问「那 R1 换成 20k 呢」里没有关键词，用它检索会扑空；换成
+    「反相比例电路 R1 换成 20k 时求 uo」就能查到对的片段。不传则回落到 question，
+    单轮调用的行为完全不变。
     """
-    hits = retrieve(store, question, top_k=top_k)
+    hits = retrieve(store, query or question, top_k=top_k)
     if not hits:
         return "课件库还是空的，请先运行 build_index.py 建库。", []
 

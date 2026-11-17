@@ -18,6 +18,7 @@
 
 from aurora.agent import run_agent
 from aurora.rag import ask_rag
+from aurora.rewrite import rewrite_question
 from aurora.router import (
     TYPE_FALLBACK,
     TYPE_FEEDBACK,
@@ -98,13 +99,14 @@ def fallback_answer(question: str) -> str:
 
 def run(question: str, store: VectorStore | None = None, top_k: int = 3,
         *, session: Session | None = None) -> dict:
-    """电路分析智能体的统一入口：Router 分流 → 分派 → 汇总结果。
+    """电路分析智能体的统一入口：上下文改写 → Router 分流 → 分派 → 汇总结果。
 
     返回一个 dict，统一了不同链路各异的中间产物，方便 demo 和评测取用：
         answer        最终回答
         circuit_type  Router 判出的类型标签
         confidence    分类置信度
         reason        分类理由
+        standalone    改写后的独立问题（第一轮 = 原问题）
         trace         opamp 链路的工具调用过程（其它链路为 None）
         hits          RAG 链路的检索命中（opamp/fallback 为 None）
 
@@ -116,11 +118,13 @@ def run(question: str, store: VectorStore | None = None, top_k: int = 3,
     store 会被当成 session 吃掉。
     """
     session = session if session is not None else Session()
-    # 先取历史，再判类型 —— 现在 Router 还不吃历史，但顺序排好，
-    # 将来给 route() 加参数时不用再动这里的结构
     history = session.context()
 
-    route_info = route(question)
+    # 一次改写、两处消费：Router 拿独立问题分类（不读整段历史，避免被上一轮
+    # 的类型拽着走），检索拿独立问题做 query（"那""它"才能还原）。
+    # 生成侧仍然用学生的原话 + history —— 改写有损，不能让它污染答案。
+    standalone = rewrite_question(question, history)
+    route_info = route(standalone)
     circuit_type = route_info["circuit_type"]
 
     if circuit_type == TYPE_OPAMP:
@@ -138,6 +142,7 @@ def run(question: str, store: VectorStore | None = None, top_k: int = 3,
         answer, hits = ask_rag(
             question, store, top_k=top_k,
             history=history,
+            query=standalone,
             system_prompt=RAG_PROMPTS.get(circuit_type),
         )
         trace = None
@@ -145,5 +150,8 @@ def run(question: str, store: VectorStore | None = None, top_k: int = 3,
     # 统一收口：五条分支都在这一个地方写回。
     # 如果照旧版写五个 early return，就得在五个 return 前各写一遍 add_turn，
     # 而 fallback 那条最容易被漏掉（它连检索都不走，很容易忘记它也在对话）。
+    # 注意写回的是学生的**原话**，不是 standalone —— 改写是内部中间产物，
+    # 对话记录里只该有人真正说过的话。
     session.add_turn(question, answer)
-    return {**route_info, "answer": answer, "trace": trace, "hits": hits}
+    return {**route_info, "standalone": standalone,
+            "answer": answer, "trace": trace, "hits": hits}
