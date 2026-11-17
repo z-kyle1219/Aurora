@@ -39,20 +39,30 @@ SYSTEM_PROMPT = """你是「Aurora」，一位严谨的模拟电子技术课程�
 用中文回答，保持引导式教学风格，但计算题必须给出确定的数值结果。"""
 
 
-def run_agent(question, tools=TOOLS, validators=None, max_rounds=5, temperature=0.3):
+def run_agent(question, tools=TOOLS, validators=None, max_rounds=5, temperature=0.3,
+              history=None):
     """跑一次带工具调用的 agent 回环，返回 (最终回答, 过程记录)。
 
     validators: 可选，{工具名: 校验函数}。校验函数接收工具返回的字符串，
                 返回一条警告字符串或 None。用于实现「校验回环」。
 
+    history: 可选，多轮对话的历史，插在 system 与本次 user 之间。
+             只接受**纯文本对**（{"role": "user"/"assistant", "content": ...}），
+             不要把上一轮的 tool_calls / tool 消息塞进来，两个原因：
+             1. 格式约束：assistant 的 tool_calls 后面必须紧跟同 id 的 tool
+                消息，缺一条接口就报错；
+             2. 语义污染：上一轮的计算结果留在历史里，学生改了参数再问，
+                模型会看着旧数字作答。
+             工具调用是「这一轮的解题过程」，不是「对话的语义内容」。
+
     过程记录（trace）是给演示和评测用的：把「模型点了什么菜、我们上了
     什么菜、有没有触发校验」都记下来，这正是「可评测解题流水线」要的东西。
     """
     client = get_client()
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": question},
-    ]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if history:
+        messages.extend(history)
+    messages.append({"role": "user", "content": question})
     trace = []
 
     for _ in range(max_rounds):

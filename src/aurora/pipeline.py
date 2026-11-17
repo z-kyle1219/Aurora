@@ -25,6 +25,7 @@ from aurora.router import (
     TYPE_POWER,
     route,
 )
+from aurora.session import Session
 from aurora.tools import validate_opamp_output
 from aurora.vector_store import VectorStore
 
@@ -69,6 +70,13 @@ POWER_PROMPT = """你是「Aurora」，一位严谨的模拟电子技术课程�
 1. 只能基于提供的片段作答，注明来源；
 2. 片段不足时诚实说明，不要编造。"""
 
+# 类型标签 → 专用提示词（feedback / power 各一套，concept 用 rag.py 的默认提示词）
+# 用查表代替 if/elif：三条链路只差一个提示词，不值得写两段几乎相同的分支
+RAG_PROMPTS = {
+    TYPE_FEEDBACK: FEEDBACK_PROMPT,
+    TYPE_POWER: POWER_PROMPT,
+}
+
 
 def fallback_answer(question: str) -> str:
     """优雅降级：诚实说明「暂不支持」，并给出学习路径（不检索、不装懂）。
@@ -88,7 +96,8 @@ def fallback_answer(question: str) -> str:
     )
 
 
-def run(question: str, store: VectorStore | None = None, top_k: int = 3) -> dict:
+def run(question: str, store: VectorStore | None = None, top_k: int = 3,
+        *, session: Session | None = None) -> dict:
     """电路分析智能体的统一入口：Router 分流 → 分派 → 汇总结果。
 
     返回一个 dict，统一了不同链路各异的中间产物，方便 demo 和评测取用：
@@ -98,24 +107,43 @@ def run(question: str, store: VectorStore | None = None, top_k: int = 3) -> dict
         reason        分类理由
         trace         opamp 链路的工具调用过程（其它链路为 None）
         hits          RAG 链路的检索命中（opamp/fallback 为 None）
+
+    session：可选的多轮会话状态。同一个 Session 连着传两轮，历史自动累积。
+             不传就是单轮，行为和改造前完全一致（旧脚本一行都不用改）。
+
+    为什么 session 是 keyword-only（那个裸 `*`）：现有调用方都是
+    `run(question, store)` 按位置传参，如果把 session 插在 store 之前，
+    store 会被当成 session 吃掉。
     """
+    session = session if session is not None else Session()
+    # 先取历史，再判类型 —— 现在 Router 还不吃历史，但顺序排好，
+    # 将来给 route() 加参数时不用再动这里的结构
+    history = session.context()
+
     route_info = route(question)
+    circuit_type = route_info["circuit_type"]
 
-    if route_info["circuit_type"] == TYPE_OPAMP:
-        answer, trace = run_agent(question, validators=OPAMP_VALIDATORS)
-        return {**route_info, "answer": answer, "trace": trace, "hits": None}
+    if circuit_type == TYPE_OPAMP:
+        # 只有运放链路挂电压校验；历史只传纯文本对（见 run_agent 的说明）
+        answer, trace = run_agent(question, validators=OPAMP_VALIDATORS, history=history)
+        hits = None
 
-    if route_info["circuit_type"] == TYPE_FEEDBACK:
-        answer, hits = ask_rag(question, store, top_k=top_k, system_prompt=FEEDBACK_PROMPT)
-        return {**route_info, "answer": answer, "trace": None, "hits": hits}
+    elif circuit_type == TYPE_FALLBACK:
+        # 不检索、不装懂：直接给能力范围 + 学习路径
+        answer, trace, hits = fallback_answer(question), None, None
 
-    if route_info["circuit_type"] == TYPE_POWER:
-        answer, hits = ask_rag(question, store, top_k=top_k, system_prompt=POWER_PROMPT)
-        return {**route_info, "answer": answer, "trace": None, "hits": hits}
+    else:
+        # feedback / power / concept 共用同一套检索能力，只换「怎么引导模型」
+        # （查表拿提示词，concept 不在表里 → None → 用 rag.py 的默认提示词）
+        answer, hits = ask_rag(
+            question, store, top_k=top_k,
+            history=history,
+            system_prompt=RAG_PROMPTS.get(circuit_type),
+        )
+        trace = None
 
-    if route_info["circuit_type"] == TYPE_FALLBACK:
-        return {**route_info, "answer": fallback_answer(question), "trace": None, "hits": None}
-
-    # 其余（concept / 未知）→ 学伴 RAG
-    answer, hits = ask_rag(question, store, top_k=top_k)
-    return {**route_info, "answer": answer, "trace": None, "hits": hits}
+    # 统一收口：五条分支都在这一个地方写回。
+    # 如果照旧版写五个 early return，就得在五个 return 前各写一遍 add_turn，
+    # 而 fallback 那条最容易被漏掉（它连检索都不走，很容易忘记它也在对话）。
+    session.add_turn(question, answer)
+    return {**route_info, "answer": answer, "trace": trace, "hits": hits}
