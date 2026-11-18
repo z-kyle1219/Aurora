@@ -95,22 +95,25 @@ def rewrite_question(question: str, history: list[dict] | None = None,
     if not history_text:
         return question
 
-    client = get_client()
-    resp = client.chat.completions.create(
-        model=DEEPSEEK_MODEL,
-        messages=[
-            {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": REWRITE_USER_TEMPLATE.format(
-                    history_text=history_text, question=question
-                ),
-            },
-        ],
-        temperature=temperature,
-    )
+    try:
+        client = get_client()
+        resp = client.chat.completions.create(
+            model=DEEPSEEK_MODEL,
+            messages=[
+                {"role": "system", "content": REWRITE_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": REWRITE_USER_TEMPLATE.format(
+                        history_text=history_text, question=question
+                    ),
+                },
+            ],
+            temperature=temperature,
+        )
+        standalone = (resp.choices[0].message.content or "").strip().strip('"“”\'')
+    except Exception:
+        return question
 
-    standalone = (resp.choices[0].message.content or "").strip().strip('"“”\'')
     # 防御：空回答、或者模型没听话写了一大段，都退回原问题
     if not standalone or len(standalone) > MAX_REWRITE_CHARS:
         return question
