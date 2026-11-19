@@ -29,7 +29,7 @@ uv sync --frozen --dev
 ```
 pytest 9.2.0 当前已安装，并已纳入开发依赖和锁文件。提交前使用 `uv lock --check` 验证 `pyproject.toml` 与 `uv.lock` 一致。
 ### 2.2 pytest 配置
-阶段 0 应在 `pyproject.toml` 中增加以下配置。当前配置尚不存在，不能提前视为已生效：
+阶段 0 已在 `pyproject.toml` 中增加以下配置；是否有效仍以当前工作区的收集与执行记录为准：
 ```toml
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -57,7 +57,7 @@ uv run pytest -q -o addopts="" -m online
 # 显式 AI Evaluation；不属于普通软件回归
 uv run pytest -q -o addopts="" -m ai_eval
 ```
-选择 `online` 或 `ai_eval` 只是第一道开关。相关用例还必须检查 `DEEPSEEK_API_KEY`；缺少凭据时应在测试入口明确拒绝或按第 11 节有理由地跳过，绝不能回落为伪造成功。仅设置 API key 不得让默认套件产生在线调用。
+选择 `online` 或 `ai_eval` 只是第一道开关。测试基础设施不会自动读取 `.env`；标记 `online` 的用例必须由执行者通过进程环境变量显式提供 `DEEPSEEK_API_KEY`。缺少凭据时应在测试入口明确失败，不能跳过、回落为伪造成功，或读取开发者本机 `.env` 密钥来满足前置条件。仅设置 API key 不得让默认套件产生在线调用。
 ## 3. 测试目录、命名与用例 ID
 实施目录遵循 `TEST_PLAN.md` 已确定的结构：
 ```text
@@ -164,7 +164,7 @@ class ScriptedClient:
 - Unit、Integration 和离线 E2E 一律使用 `ScriptedClient` 或“调用即失败”的哨兵。
 - Fake 注入到 `aurora.<使用模块>.get_client`，并断言完整关键请求参数。
 - `aurora.config.OpenAI` 的全局拦截负责兜底，不能替代用例级调用断言。
-- 只有 `online` 或 `ai_eval` 用例可以使用真实 `get_client()`；默认 marker 过滤和凭据检查必须同时满足。
+- 只有 `online` 用例可以使用真实 `get_client()`；AI Evaluation 需要真实客户端时必须同时标记 `online` 和 `ai_eval`，且默认 marker 过滤和凭据检查必须同时满足。
 ### 7.2 Embedding / BGE
 - `aurora.embedder` 的调用契约测试 patch `aurora.embedder.get_model`，Fake model 的 `encode()` 必须记录文本、归一化、进度条和 NumPy 转换参数。
 - RAG 集成测试 patch `aurora.rag.encode_query`，返回维度固定、可手算的 `float32` 向量。
@@ -182,12 +182,13 @@ class ScriptedClient:
 | OpenAI 客户端拦截 | autouse patch `aurora.config.OpenAI` 为构造即抛错的哨兵 | 所有仍通过项目 `get_client()` 构造 OpenAI 客户端的调用；即使业务模块已绑定 `get_client`，函数体仍从 `config` 全局解析 `OpenAI` | 绕过项目客户端的 HTTP/socket 直连；用例已注入的 ScriptedClient | `tests/test_infra.py` 调用未注入 Fake 的 `get_client()`，断言得到明确离线保护异常且没有连接尝试 |
 | Socket 网络拦截 | autouse patch `socket.socket.connect` 和 `socket.create_connection` | SDK、模型下载及其他 Python socket 出站连接的兜底 | 不经这两个入口的非 socket IPC；已经建立的连接 | 用临时 socket 对保留测试地址发起连接，断言立即抛离线保护异常；不得访问真实域名 |
 | BGE 模型加载拦截 | autouse patch `aurora.embedder.get_model` 为调用即抛错的哨兵，并清空缓存 | 直接调用 `get_model()` 以及 `encode_passages()`/`encode_query()` 经由该名字触发的真实模型加载 | 使用方已显式 patch 的 Fake model；绕过项目函数直接实例化 `SentenceTransformer` 的新代码由 socket 层兜底 | 调用 `encode_query("probe")`，断言在模型构造前失败；自检前后 `cache_clear()` |
-在线用例只允许按 marker 范围解除所需防线。`online` LLM 冒烟可以放行 OpenAI 和 socket，但仍应拦截 BGE，除非该用例明确也标为 `ai_eval` 或专门验证真实 Embedding。放行逻辑必须以 pytest item marker 为依据，不能因环境中存在 API key 就全局关闭保护。
+在线用例只允许按 marker 范围解除所需防线。`online` 只放行 OpenAI 和 socket，仍拦截 BGE；`ai_eval` 只放行 BGE，仍拦截 OpenAI 和 socket。需要同时使用真实 API 与真实 BGE（或需要下载模型）的 AI Evaluation 必须同时标记 `online` 和 `ai_eval`。放行逻辑必须以 pytest item marker 为依据，不能因环境中存在 API key 就全局关闭保护；显式选择 `online` 但缺少 key 时测试必须失败，不得静默跳过。
 ## 9. 临时文件、测试数据与数据库
 ### 9.1 文件隔离
 - 使用 `tmp_path` 创建每个用例独占的文件与目录；不要使用固定相对临时目录。
 - `chunk_file()`、`load_cards()`、`VectorStore.save/load()` 和 `build_index.py` 集成测试必须显式指向临时路径。
 - 测试中不得修改 `.env`；配置测试直接 patch `aurora.config.DEEPSEEK_API_KEY` 等已在导入时冻结的模块常量。仅 `monkeypatch.setenv()` 不能可靠改变已导入配置。
+- 默认测试启动时必须在 `config.py` 导入前固定 dummy key 并拦截 `load_dotenv()`；应断言拦截已发生且冻结配置等于 dummy key，避免屏蔽机制因导入顺序变化而静默失效。显式 `online` 测试只接受进程环境变量中的 key，不读取 `.env`。
 - 禁止读取真实用户数据、生产数据、仓库外 `../courseware_md/` 和被忽略的本地索引。
 - 测试微型数据不得包含真实 API key、真实用户对话或未经授权的课件全文。
 ### 9.2 数据组织
@@ -203,8 +204,8 @@ Aurora 当前没有关系型数据库、外部向量数据库或持久化 Sessio
 | 无 marker | Unit、Integration、离线 E2E | 是 | 三层防线全部开启 |
 | `slow` | 显著超出默认套件时长的确定性测试 | 否 | 显式选择；仍默认断网、禁 BGE |
 | `online` | 真实 DeepSeek API 协议冒烟 | 否 | 显式选择 + `DEEPSEEK_API_KEY` |
-| `ai_eval` | 概率性能力评估，可能同时使用真实 LLM/BGE/索引 | 否 | 显式选择 + 对应凭据、数据集与索引版本 |
-一个用例可同时标记 `online` 和 `slow`，但 AI 质量指标用例必须标记 `ai_eval`，不能仅标 `online` 混入协议冒烟。默认过滤固定排除 `online`、`ai_eval` 和 `slow`，与 `TEST_PLAN.md`阶段 0 决策一致。
+| `ai_eval` | 概率性能力评估；单独使用时只放行 BGE | 否 | 显式选择 + 数据集与索引版本；需要网络/API 时同时标 `online` |
+一个用例可同时标记 `online` 和 `slow`；需要真实 API 与真实 BGE 的 AI 质量指标用例必须同时标记 `online` 和 `ai_eval`，不能仅标 `online` 混入协议冒烟。默认过滤固定排除 `online`、`ai_eval` 和 `slow`，与 `TEST_PLAN.md` 阶段 0 决策一致。
 ## 11. 分层编写规范
 ### 11.1 Unit
 - 只验证一个模块内的函数或类，所有外部依赖可替换。
@@ -307,7 +308,7 @@ CI 使用 Python 3.14，不注入 `DEEPSEEK_API_KEY`，上传 JUnit XML 以保�
 ### 16.1 计划与当前仓库状态差异
 1. `TEST_PLAN.md` 的审计基线记录当时 `pyproject.toml` 无 pytest、`.venv` 未安装 pytest；当前 pytest 9.2.0 已安装，并已纳入 `pyproject.toml` 与 `uv.lock`。
 2. `TEST_PLAN.md` 与 `docs/codebase-overview.md` 已区分审计时点和当前状态，不应再据历史记录判断当前没有 pytest。
-3. 当前仍没有 `tests/`、pytest ini 配置、CI、`DEFECTS.md` 或 `TEST_STATUS.md`，因此计划中的阶段 0 尚未完成。
+3. 当前工作区已建立 `tests/`、pytest 配置、三层离线防线、`DEFECTS.md` 和 `TEST_STATUS.md`；阶段 0 状态以 `TEST_STATUS.md` 最近一次实际执行记录为准。CI 仍未建立。
 未发现需要改变 `TEST_PLAN.md` 已确定测试范围、优先级、marker、三层防线或阶段顺序的代码冲突。计划中列出的产品行为冲突和缺陷继续按其用例与待决项处理。
 ### 16.2 尚未确定的技术决策
 以下决策沿用 `TEST_PLAN.md`，本规范不代替产品决策：
@@ -322,7 +323,7 @@ CI 使用 Python 3.14，不注入 `DEEPSEEK_API_KEY`，上传 JUnit XML 以保�
 9. AI 裁判独立性、课件衍生评测集授权和质量回归阈值。
 这些决策应先登记到缺陷或决策记录，再更新对应目标断言。不得由测试作者通过选择“容易通过”的断言替代产品决策。
 ## 17. 下一阶段基础设施清单
-按 `TEST_PLAN.md` 阶段 0 实施，不提前编写计划外业务测试：
+阶段 0 已按 `TEST_PLAN.md` 建立以下基础设施；后续整改与验收仍不得提前编写计划外业务测试：
 1. 已完成：核对 pytest dev 依赖并更新 `uv.lock`。
 2. 增加 `[tool.pytest.ini_options]`、三个 marker 和默认过滤。
 3. 创建 `tests/conftest.py`，实现三层防线、`ScriptedClient` 工厂和响应构造器。

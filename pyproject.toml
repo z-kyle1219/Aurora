@@ -19,6 +19,15 @@ dev = [
     "pytest>=9.2.0",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not online and not ai_eval and not slow'"
+markers = [
+    "online: accesses a real external API and requires explicit enablement",
+    "ai_eval: runs non-deterministic AI capability evaluation",
+    "slow: takes materially longer than the default offline suite",
+]
+
 [build-system]
 requires = ["uv_build>=0.9.28,<0.10.0"]
 build-backend = "uv_build"

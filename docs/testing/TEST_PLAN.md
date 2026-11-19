@@ -236,7 +236,7 @@ pipeline.run(question, store, top_k=3, *, session=None)
 
 6. **避免默认产生真实调用与费用**（三层防线，落点各不相同）：
 
-   - `pyproject.toml` 配置 `addopts = "-m 'not online and not ai_eval'"`；
+   - `pyproject.toml` 配置 `addopts = "-m 'not online and not ai_eval and not slow'"`；
 
    - **全局熔断**：autouse patch `aurora.config.OpenAI` 为"构造即抛错"的替身。`get_client()` 的函数体在调用时才从 `config` 模块全局解析 `OpenAI`，因此**各模块即便用 `from aurora.config import get_client` 绑定了本地引用，这条路依然被拦住**（已离线实测：patch 后 `aurora.router.get_client()` 返回替身而非真实客户端）。
 
@@ -824,11 +824,22 @@ tests/
 
 - `tests/conftest.py`：三层断网防线（`config.OpenAI` 熔断 + socket 阻断 + `get_model` 替身）、`ScriptedClient` 工厂、`message/tool_call` 构造器。
 
-- `tests/test_infra.py`：**1 条基础设施自检**（断网生效、fake 可注入），让 `pytest` 有可收集用例。
+- `tests/test_infra.py`：以下 8 条基础设施自检分别验证三层防线、微型数据、Fake 注入、业务模块绑定引用和测试凭据隔离：
+
+| Test ID | 验证目标 | 关键断言 |
+|---|---|---|
+| `INF-UNIT-001` | OpenAI 客户端构造熔断 | dummy key 下 `get_client()` 命中构造哨兵，且未尝试网络 |
+| `INF-UNIT-002` | Socket 网络熔断 | `socket.create_connection()` 在 `config.get_client()` 受控探针路径中被阻止 |
+| `INF-UNIT-003` | BGE 模型加载熔断 | `encode_query()` 在模型构造或下载前失败 |
+| `INF-UNIT-004` | 微型向量与合成知识 Fixture | 实际构造二维向量和符合 `Chunk` 字段契约的数据 |
+| `INF-UNIT-005` | `ScriptedClient` 使用方注入 | Router 响应、调用次数、消息、model、temperature、tools 与 tool_choice 正确 |
+| `INF-UNIT-006` | 业务模块 `get_client` 绑定引用熔断 | `router.get_client` 仍解析 `config.OpenAI` 哨兵，不能绕过全局防线 |
+| `INF-UNIT-007` | 原生 Socket connect 熔断 | `socket.socket.connect()` 立即被阻止 |
+| `INF-UNIT-008` | 测试凭据与 dotenv 隔离 | 默认环境和冻结配置只含 dummy key，且 `load_dotenv()` 拦截确实发生 |
 
 - `pyproject.toml`：`[tool.pytest.ini_options]` 注册 `online / ai_eval / slow` marker，`addopts = -m "not online and not ai_eval and not slow"`。
 
-- **准入**：`uv run pytest -q` 返回码 0 且 `1 passed`；`uv run pytest --collect-only -q` 能列出全部用例 ID，且无网络请求。
+- **准入**：`uv run pytest -q` 返回码 0 且上述 `INF-UNIT-001` 至 `INF-UNIT-008` 全部通过；`uv run pytest --collect-only -q` 能列出全部用例 ID，且无网络请求。
 
   注意：pytest 在**未收集到任何用例**时退出码为 5，因此"0 passed"不能作为通过条件。
 
