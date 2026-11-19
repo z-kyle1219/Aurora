@@ -232,7 +232,7 @@ standalone query
 
 以下输入会被拒绝：属性访问、下标、列表和字典、任意函数名、变量赋值及其他未显式允许的 AST 节点。
 
-`execute_tool()` 负责名称分派、参数检查和部分异常转换。`ValueError`、`ZeroDivisionError` 和 `OverflowError` 会转换成字符串结果，再交还模型处理；`ast.parse()` 产生的 `SyntaxError` 不在捕获范围内，会向上抛出并中断 Pipeline。
+`execute_tool()` 负责名称分派、参数检查和部分异常转换。`ValueError`、`ZeroDivisionError`、`OverflowError` 和 `SyntaxError` 会转换成字符串结果，再交还模型处理。`calculate_expression()` 在结果为复数（如 `(-8)**(1/3)`）时抛出 `ValueError("计算结果不是实数")`，因此不再出现 `float(complex)` 的 `TypeError`；其他未预期的 `TypeError` 仍会向上抛出并中断 Pipeline。`ast.parse()` 产生的 `SyntaxError` 由 `execute_tool()` 转换为固定的 `"计算失败：表达式语法错误"`。
 
 `_eval_node()` 执行函数调用时只处理 `node.args`，没有检查或传递 `node.keywords`。关键字参数因此会被静默丢弃，可能产生错误数值。例如 `round(3.14159, ndigits=2)` 实际按 `round(3.14159)` 执行，结果为 `3.0`。
 
@@ -342,7 +342,7 @@ class Session:
 - `config.py`：缺少 key 时主动失败。
 - `router.py`：无 tool call、JSON 解析失败和非法标签时回退到 `concept`。
 - `agent.py`：非法工具 JSON 按空参数执行；模型输出被截断或为空时抛出 `RuntimeError`。
-- `tools.py`：将 `ValueError`、`ZeroDivisionError` 和 `OverflowError` 转换为可返回给模型的错误字符串；`SyntaxError` 会继续向上抛出。
+- `tools.py`：将 `ValueError`、`ZeroDivisionError`、`OverflowError` 和 `SyntaxError` 转换为可返回给模型的错误字符串；复数结果按 `ValueError` 处理，其他 `TypeError` 仍会向上抛出。
 - `rewrite.py`：异常、空结果或超过 500 字时回退原问题；正常结果会剥离首尾空白和引号。
 - `rag.py`：空索引时返回提示文本。
 - `judge.py`：结构化参数无法解析时返回默认评测结果。

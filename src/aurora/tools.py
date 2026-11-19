@@ -79,7 +79,10 @@ def calculate_expression(expr: str) -> float:
     例：calculate_expression("-(100/10)*(-3)") -> 30.0
     """
     tree = ast.parse(expr, mode="eval")
-    return float(_eval_node(tree))
+    value = _eval_node(tree)
+    if isinstance(value, complex):
+        raise ValueError("计算结果不是实数")
+    return float(value)
 
 
 # ---------------------------------------------------------------------------
@@ -131,6 +134,8 @@ def execute_tool(name: str, arguments: dict) -> str:
 
     try:
         value = calculate_expression(expr)
+    except SyntaxError:
+        return "计算失败：表达式语法错误"
     except (ValueError, ZeroDivisionError, OverflowError) as exc:
         return f"计算失败：{exc}"
     return f"{value:g}"
