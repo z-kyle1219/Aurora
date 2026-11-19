@@ -2,7 +2,7 @@
 
 > 状态日期：2026-11-19
 >
-> 阶段：阶段 1（整改定向复验通过，完整套件待复验）
+> 阶段：阶段 1（整改定向复验与整改后完整套件复跑均无失败；阶段定标待人工确认）
 
 ## 基线与环境
 
@@ -46,12 +46,25 @@
 
 本次未执行完整 `uv run pytest -q`、显式 marker 全套命令或覆盖率命令，因此其他 Stage 1 Test ID 的整改后状态不得依据本次定向结果重新标记。DEF-02 已具备其全部关联验收证据并关闭，但 Stage 1 整体仍需完整套件复验后才能标记 Passed。
 
+### 复跑补充记录（含一次定向重复与一次完整套件）
+
+以上 `1 warning` 属原始记录内容，原样保留，不作修改。为补足原始记录未覆盖的完整套件状态，另执行两次复跑：
+
+| 执行时间（+08:00） | Git revision | 命令 | 退出码 | 实际结果 |
+|---|---|---|---:|---|
+| 2026-11-19 20:25:52 | `c1a8ff8` | `UV_CACHE_DIR=.uv-cache uv run pytest -q tests/unit/test_tools.py tests/integration/test_agent_tools.py` | 0 | `33 passed, 1 xfailed in 0.16s`；0 failed / 0 skipped / 0 xpassed，未再现 warning |
+| 2026-11-19 20:25:56 | `c1a8ff8` | `UV_CACHE_DIR=.uv-cache uv run pytest -q` | 0 | `55 passed, 1 xfailed in 1.05s`；收集 56 节点，0 failed / 0 skipped / 0 xpassed |
+
+复跑环境与原始记录一致：网络、真实 LLM、真实 BGE 均禁用，未读取真实索引与课件。`c1a8ff8` 相对 `a652851` 仅改动 `docs/testing/`，业务代码与测试代码未变，因此复跑结果可归因于 `a63bc6d`、`a652851` 的代码状态。
+
+这两次复跑只补齐执行证据，不改写原始结论：Stage 1 的 Test ID 定标、准入判定与阶段状态仍需人工确认后更新。
+
 整改前完整套件中的 Stage 1 Test ID 状态（历史结果）：
 
 | 状态 | 数量 | Test ID |
 |---|---:|---|
 | Passed | 13 | CFG-UNIT-001；CHK-UNIT-001/002；CRD-UNIT-001；VST-UNIT-001/002/003；VST-INT-001；SES-UNIT-001；TOL-UNIT-001/005/007/009 |
-| Failed | 2 | TOL-UNIT-002、TOL-UNIT-006（整改前完整套件历史结果；两项已在整改定向复验中通过，完整套件尚未复验） |
+| Failed | 2 | TOL-UNIT-002、TOL-UNIT-006（整改前完整套件历史结果；两项在整改定向复验和整改后完整套件复跑中均已通过） |
 | XFailed | 1 | TOL-UNIT-003（`strict=True`，DEF-01；当前错误返回 `"3"`，目标为 `"3.14"`） |
 | Blocked / Not Executed | 0 | 无 |
 
@@ -93,7 +106,7 @@
 ## 范围状态
 
 - 阶段 0：`Passed`（8 collected / 8 passed / 0 failed / 0 skipped / 0 xfailed / 0 deselected）
-- 阶段 1：`Pending Full Re-run`（整改前完整结果为 13 Passed / 2 Failed / 1 XFailed；整改定向复验中 TOL-UNIT-002、TOL-UNIT-006 已 Passed，完整套件尚未执行）
+- 阶段 1：`Pending Sign-off`（整改前完整结果为 13 Passed / 2 Failed / 1 XFailed；整改定向复验中 TOL-UNIT-002、TOL-UNIT-006 已 Passed；整改后完整套件复跑 56 节点 55 passed / 1 xfailed / 0 failed，退出码 0，阶段定标待人工确认）
 - 阶段 2 及之后：除 AGT-INT-003 为验证 DEF-02 而完成定向执行外，其余均为 `Not Executed`
 - `online` / `ai_eval` / `slow`：`Not Executed`，默认 marker 过滤
 
@@ -101,7 +114,7 @@
 
 - 新增缺陷：DEF-01、DEF-02
 - 关闭缺陷：DEF-02（TOL-UNIT-006、AGT-INT-003 定向复验通过）
-- 阻塞项：`pytest-cov` 未安装，无法生成覆盖率；Stage 1 完整默认套件尚未在整改后复验
+- 阻塞项：`pytest-cov` 未安装，无法生成覆盖率；Stage 1 阶段定标待人工确认（整改后完整套件复跑已无失败）
 
 ## 与上次基线的变化
 
@@ -114,4 +127,4 @@
 
 ## 下一步
 
-运行整改后的完整默认离线套件并核对 Stage 1 全部 Test ID；只有完整结果满足准入条件后，才能把 Stage 1 标记为 Passed。DEF-01 仍为 Open / XFailed，资源边界 TOL-UNIT-010 未执行且不属于本次整改记录。
+核对 Stage 1 全部 Test ID 在整改后的状态，并确认是否把阶段 1 标记为 Passed：整改后完整默认离线套件已于 2026-11-19 20:25:56 复跑（`55 passed, 1 xfailed`，56 节点，退出码 0），该次执行只补执行证据，未自行改写阶段状态。DEF-01 仍为 Open / XFailed，资源边界 TOL-UNIT-010 未执行且不属于本次整改记录。
