@@ -2,9 +2,11 @@
 
 > 建立日期：2026-11-19
 >
-> 当前范围：测试基础设施阶段 0
+> 当前范围：阶段 0 测试基础设施、阶段 1 纯逻辑 P0
 
-阶段 0 未新增产品缺陷。后续缺陷按下表登记，禁止以放宽断言或无依据的 `skip` 代替缺陷记录。
+阶段 0 未新增产品缺陷。阶段 1 按测试计划定标并复现以下产品缺陷；禁止以放宽断言或无依据的 `skip` 代替缺陷记录。
 
 | 缺陷 ID | 关联 Test ID | 优先级 | 当前行为 | 目标行为 | 复现命令 | 首次发现 revision | 状态 | 负责人/决策人 | 关闭证据 |
 |---|---|---|---|---|---|---|---|---|---|
+| DEF-01 | TOL-UNIT-003 | P0 | `round(3.14159, ndigits=2)` 的关键字参数被静默丢弃，`execute_tool()` 返回 `"3"` | 关键字参数生效并返回 `"3.14"`，或显式拒绝而非静默改变计算语义 | `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q tests/unit/test_tools.py -k tol_unit_003` | `876b39f04f66d0131fc31ff1888f7c7d46015f2e` | Open / XFailed | 待人工决策 | 无 |
+| DEF-02 | TOL-UNIT-002、TOL-UNIT-006 | P0 | `execute_tool()` 未捕获 `(-8)**(1/3)` 的 `TypeError` 和残缺/赋值表达式的 `SyntaxError`，异常会逃逸；计划中 TOL-UNIT-002 声称赋值表达式抛 `ValueError` 与实测不符 | `TypeError`/`SyntaxError` 转为可识别的 `"计算失败：…"` 字符串；同步澄清 TOL-UNIT-002 的异常契约 | `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q tests/unit/test_tools.py -k "tol_unit_002 or tol_unit_006"` | `876b39f04f66d0131fc31ff1888f7c7d46015f2e` | Open / Failed | 待人工决策 | 无 |

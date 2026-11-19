@@ -2,18 +2,47 @@
 
 > 状态日期：2026-11-19
 >
-> 阶段：阶段 0（Passed）
+> 阶段：阶段 1（Failed，待产品缺陷与计划冲突处理）
 
 ## 基线与环境
 
-- Git revision：`22cd1865f56245510f61c3ce8c5a33f14ee02ad1`
+- Git revision：`876b39f04f66d0131fc31ff1888f7c7d46015f2e`（测试实施前基线；当前变更未提交）
 - Python / pytest：Python 3.14.2 / pytest 9.2.0
 - 网络：禁用
 - 真实 LLM：禁用
 - 真实 BGE：禁用
 - 真实索引与课件：未读取
 
-## 执行记录
+## 阶段 1 执行记录
+
+本阶段新增 16 个稳定 Test ID，对应 47 个 pytest node id；连同阶段 0 的 8 个基础设施节点，默认套件共收集 55 个节点。所有正式执行均使用工作区 `.uv-cache`，不提供真实 API key，并由阶段 0 三层防线阻止 OpenAI、Socket 和 BGE 外部访问。由于受限沙箱无权创建 pytest 系统临时目录，两个使用 `tmp_path` 的用例先出现环境性 setup error；随后获准在沙箱外执行相同离线命令，正式结果不再包含该环境错误。
+
+| 命令 | 退出码 | 实际结果 |
+|---|---:|---|
+| `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest --collect-only -q` | 0 | `55 tests collected in 0.03s`；Stage 1 的 16 个 Test ID 全部可追溯 |
+| `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q` | 1 | `51 passed, 3 failed, 1 xfailed in 0.33s`；无 skipped/xpassed/deselected |
+| `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -m "not online and not ai_eval and not slow" -q` | 1 | `51 passed, 3 failed, 1 xfailed in 0.27s`；结果与默认过滤一致 |
+| `uv run pytest --cov=aurora --cov-report=term-missing` | 未执行 | 当前环境未安装 `pytest-cov`，`pytest --help` 不包含 `--cov`；按任务约束未修改依赖 |
+
+Stage 1 Test ID 状态：
+
+| 状态 | 数量 | Test ID |
+|---|---:|---|
+| Passed | 13 | CFG-UNIT-001；CHK-UNIT-001/002；CRD-UNIT-001；VST-UNIT-001/002/003；VST-INT-001；SES-UNIT-001；TOL-UNIT-001/005/007/009 |
+| Failed | 2 | TOL-UNIT-002（`a=1` 实际抛 `SyntaxError`，与计划的 `ValueError` 不符）；TOL-UNIT-006（两个参数节点分别逃逸 `TypeError`、`SyntaxError`） |
+| XFailed | 1 | TOL-UNIT-003（`strict=True`，DEF-01；当前错误返回 `"3"`，目标为 `"3.14"`） |
+| Blocked / Not Executed | 0 | 无 |
+
+节点统计与 Test ID 统计不可混用：Stage 1 的 47 个节点中 43 passed、3 failed、1 xfailed；全套 55 个节点中 51 passed、3 failed、1 xfailed。阶段 1 未达到“全部 passed 或计划授权 xfailed”的准入条件。
+
+覆盖率：`Not Available`。原因是当前项目未声明或安装 `pytest-cov`，本轮按要求未擅自新增依赖，不能提供或推测覆盖率百分比。
+
+计划核对发现两处需人工评审的事实问题，未直接修改 `TEST_PLAN.md`：
+
+1. TOL-UNIT-001 中 `3**4+sqrt(2)*sqrt(8)` 的手算结果是 `85.0`，计划写为 `97.0`；测试按数学正确值断言。
+2. TOL-UNIT-002 将 `a=1` 列为应抛 `ValueError` 且称已实测，但实际 `ast.parse(..., mode="eval")` 抛 `SyntaxError`；该行为也落入 TOL-UNIT-006 要求统一转换的异常边界。
+
+## 阶段 0 执行记录
 
 执行环境使用工作区 `.uv-cache` 作为 `UV_CACHE_DIR`，并从验收命令环境移除 `DEEPSEEK_API_KEY`。测试启动时先固定 `stage-0-dummy-key`，再在受控窗口导入 `config.py` 并拦截 `load_dotenv()`；启动断言和 `INF-UNIT-008` 会在导入顺序或屏蔽失效时失败。未启用任何在线、模型或评测开关，未读取或使用真实 API Key。
 
@@ -42,14 +71,15 @@
 ## 范围状态
 
 - 阶段 0：`Passed`（8 collected / 8 passed / 0 failed / 0 skipped / 0 xfailed / 0 deselected）
-- 阶段 1 及之后：`Not Executed`，不属于本次实施范围
+- 阶段 1：`Failed`（16 Test ID：13 Passed / 2 Failed / 1 XFailed；47 nodes：43 passed / 3 failed / 1 xfailed）
+- 阶段 2 及之后：`Not Executed`，不属于本次实施范围
 - `online` / `ai_eval` / `slow`：`Not Executed`，默认 marker 过滤
 
 ## 缺陷与阻塞
 
-- 新增缺陷：无
+- 新增缺陷：DEF-01、DEF-02
 - 关闭缺陷：无
-- 阻塞项：无
+- 阻塞项：`pytest-cov` 未安装，无法生成覆盖率；DEF-02 未修复且本轮禁止修改业务代码
 
 ## 与上次基线的变化
 
@@ -62,4 +92,4 @@
 
 ## 下一步
 
-阶段 1 及后续业务测试仍为 `Not Executed`，应在阶段 0 通过审核后按 `TEST_PLAN.md` 顺序另行实施。
+人工审核 DEF-01、DEF-02 与两处测试计划事实冲突；在业务修复或契约决策完成前，不进入阶段 2。本轮未修改业务代码，也未提交 Git。
