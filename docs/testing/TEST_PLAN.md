@@ -494,7 +494,7 @@ P0 里有若干用例，其"当前行为"本身就是缺陷（关键字参数被
 
 | TOL-UNIT-001 | tools | Unit | 白名单正常计算 | `-(100/10)*(-3)`、`3**4+sqrt(2)*sqrt(8)`、`pi`、`e`、`-2`、`7%3` | 分别得 `30.0`、`97.0`、`π`、`e`、`-2`、`1`；返回 `float` | 无 | 无 | P0 | Planned |
 
-| TOL-UNIT-002 | tools | Unit | 拒绝危险语法 | `__import__("os").system(...)`、`(1).__class__`、`[1,2][0]`、`lambda:1`、`a=1`、字符串拼接 | 全部 `ValueError`；实测均被拒且无副作用 | 无 | 无 | P0 | Planned |
+| TOL-UNIT-002 | tools | Unit | 拒绝危险语法 | `__import__("os").system(...)`、`(1).__class__`、`[1,2][0]`、`lambda:1`、`a=1`、字符串拼接 | `a=1` 在 `ast.parse(..., mode="eval")` 阶段抛原生 `SyntaxError`；其余可成功解析但不在 AST 白名单中的表达式抛 `ValueError`；全部被拒且无副作用 | 无 | 无 | P0 | Planned |
 
 | TOL-UNIT-003 | tools | Unit | 关键字参数必须生效（缺陷定标） | `round(3.14159, ndigits=2)` | 正确值为 `"3.14"`；实测当前返回 `"3"`（等价 `round(3.14159)`，关键字被丢弃且无告警）→ 按 §4.4-A 写 `xfail(strict=True)`，修复后去掉标记 | 无 | 无 | P0 | Planned |
 
@@ -502,7 +502,7 @@ P0 里有若干用例，其"当前行为"本身就是缺陷（关键字参数被
 
 | TOL-UNIT-005 | tools | Unit | 异常转换矩阵 | `1/0`、`log(0)`、`sqrt(-1)`、`10**10000` | 全部返回 `"计算失败：…"` 字符串（实测通过） | 无 | 无 | P0 | Planned |
 
-| TOL-UNIT-006 | tools | Unit | **未捕获异常逃逸** | `(-8)**(1/3)`（`complex` → `float()` 抛 `TypeError`）；`"1+"`（`SyntaxError`） | 实测两者**都不被 `execute_tool` 捕获**，会中断 opamp 链路。目标：`TypeError`/`SyntaxError` 转为错误字符串 | 无 | 无 | P0 | Planned |
+| TOL-UNIT-006 | tools | Unit | **未捕获异常逃逸** | `(-8)**(1/3)`（`complex` → `float()` 抛 `TypeError`）；`"1+"`（`SyntaxError`） | `calculate_expression()` 保留精确计算异常；实测两者**都不被 `execute_tool()` 捕获**，会中断 opamp 链路。目标：由工具协议边界 `execute_tool()` 将预期的 `TypeError`/`SyntaxError` 转为错误字符串 | 无 | 无 | P0 | Planned |
 
 | TOL-UNIT-007 | tools | Unit | 分派与参数校验 | 未知工具名；`arguments` 非 dict；`expr` 缺失/空串/非字符串 | 返回可识别错误字符串，不抛异常 | 无 | 无 | P0 | Planned |
 

@@ -1,6 +1,7 @@
 """本地计算工具纯逻辑测试。"""
 
 import math
+import os
 
 import pytest
 
@@ -28,21 +29,28 @@ def test_tol_unit_001__calculates_whitelisted_expressions(expression, expected):
 
 
 @pytest.mark.parametrize(
-    "expression",
+    ("expression", "expected_exception", "message_pattern"),
     [
-        '__import__("os").system("echo unsafe")',
-        "(1).__class__",
-        "[1,2][0]",
-        "lambda:1",
-        "a=1",
-        '"a" + "b"',
+        ('__import__("os").system("echo unsafe")', ValueError, "不允许的语法"),
+        ("(1).__class__", ValueError, "不允许的语法"),
+        ("[1,2][0]", ValueError, "不允许的语法"),
+        ("lambda:1", ValueError, "不允许的语法"),
+        ("a=1", SyntaxError, "invalid syntax"),
+        ('"a" + "b"', ValueError, "不允许的语法"),
     ],
     ids=["import", "attribute", "subscript", "lambda", "assignment", "string-concatenation"],
 )
-def test_tol_unit_002__rejects_dangerous_or_non_numeric_syntax(expression):
-    """TOL-UNIT-002：危险或非数值 AST 语法以 ValueError 拒绝。"""
-    with pytest.raises(ValueError, match="不允许的语法"):
+def test_tol_unit_002__rejects_dangerous_or_non_numeric_syntax(
+    monkeypatch, expression, expected_exception, message_pattern
+):
+    """TOL-UNIT-002：区分语法解析失败与 AST 白名单拒绝，且无副作用。"""
+    system_calls = []
+    monkeypatch.setattr(os, "system", lambda command: system_calls.append(command))
+
+    with pytest.raises(expected_exception, match=message_pattern):
         calculate_expression(expression)
+
+    assert system_calls == []
 
 
 @pytest.mark.xfail(strict=True, reason="DEF-01 关键字参数被静默丢弃")
