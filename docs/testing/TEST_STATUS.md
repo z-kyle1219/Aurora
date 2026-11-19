@@ -2,11 +2,11 @@
 
 > 状态日期：2026-11-19
 >
-> 阶段：阶段 1（Failed，待产品缺陷与计划冲突处理）
+> 阶段：阶段 1（整改定向复验通过，完整套件待复验）
 
 ## 基线与环境
 
-- Git revision：`876b39f04f66d0131fc31ff1888f7c7d46015f2e`（测试实施前基线；当前变更未提交）
+- Git revision：`876b39f04f66d0131fc31ff1888f7c7d46015f2e`（测试实施前基线）；异常处理整改相关提交：`a63bc6d`（工具错误转换）、`a652851`（AGT-INT-003 测试）
 - Python / pytest：Python 3.14.2 / pytest 9.2.0
 - 网络：禁用
 - 真实 LLM：禁用
@@ -15,7 +15,7 @@
 
 ## 阶段 1 执行记录
 
-本阶段新增 16 个稳定 Test ID，对应 47 个 pytest node id；连同阶段 0 的 8 个基础设施节点，默认套件共收集 55 个节点。所有正式执行均使用工作区 `.uv-cache`，不提供真实 API key，并由阶段 0 三层防线阻止 OpenAI、Socket 和 BGE 外部访问。由于受限沙箱无权创建 pytest 系统临时目录，两个使用 `tmp_path` 的用例先出现环境性 setup error；随后获准在沙箱外执行相同离线命令，正式结果不再包含该环境错误。
+本阶段新增 16 个稳定 Test ID，对应 47 个 pytest node id；连同阶段 0 的 8 个基础设施节点，默认套件共收集 55 个节点；追加 AGT-INT-003 后为 56 个节点。所有正式执行均使用工作区 `.uv-cache`，不提供真实 API key，并由阶段 0 三层防线阻止 OpenAI、Socket 和 BGE 外部访问。由于受限沙箱无权创建 pytest 系统临时目录，两个使用 `tmp_path` 的用例先出现环境性 setup error；随后获准在沙箱外执行相同离线命令，正式结果不再包含该环境错误。
 
 | 命令 | 退出码 | 实际结果 |
 |---|---:|---|
@@ -24,12 +24,34 @@
 | `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -m "not online and not ai_eval and not slow" -q` | 1 | `51 passed, 3 failed, 1 xfailed in 0.27s`；结果与默认过滤一致 |
 | `uv run pytest --cov=aurora --cov-report=term-missing` | 未执行 | 当前环境未安装 `pytest-cov`，`pytest --help` 不包含 `--cov`；按任务约束未修改依赖 |
 
-Stage 1 Test ID 状态：
+以上 `51 passed, 3 failed, 1 xfailed` 是异常处理整改前最后一次完整默认套件结果，继续保留为历史证据，不能代表整改后的当前全套状态。
+
+## 异常处理整改定向复验
+
+- 执行时间：2026-11-19 17:21:57 +08:00（命令启动前采集）
+- 执行范围：`tests/unit/test_tools.py`、`tests/integration/test_agent_tools.py`
+- 网络 / 真实 LLM / 真实 BGE：均禁用
+- 真实索引与课件：未读取
+
+| 命令 | 退出码 | 实际结果 |
+|---|---:|---|
+| `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q tests/unit/test_tools.py tests/integration/test_agent_tools.py` | 0 | `33 passed, 1 xfailed, 1 warning in 0.25s`；0 failed / 0 skipped / 0 xpassed |
+
+本次实际执行并通过的整改相关 Test ID：
+
+- TOL-UNIT-002：`a=1` 保留原生 `SyntaxError`，可解析但不在白名单中的 AST 抛 `ValueError`；该项确认为测试契约修正，不属于产品缺陷。
+- TOL-UNIT-006：非实数计算与语法错误均由工具边界转换为模型可读字符串，不再逃逸。
+- AGT-INT-003：真实 `run_agent → execute_tool → calculate_expression` 链将错误写入正确 tool 消息和 trace，第二轮返回最终回答并正常结束。
+- TOL-UNIT-003：仍为计划授权的 `XFailed`，DEF-01 未关闭。
+
+本次未执行完整 `uv run pytest -q`、显式 marker 全套命令或覆盖率命令，因此其他 Stage 1 Test ID 的整改后状态不得依据本次定向结果重新标记。DEF-02 已具备其全部关联验收证据并关闭，但 Stage 1 整体仍需完整套件复验后才能标记 Passed。
+
+整改前完整套件中的 Stage 1 Test ID 状态（历史结果）：
 
 | 状态 | 数量 | Test ID |
 |---|---:|---|
 | Passed | 13 | CFG-UNIT-001；CHK-UNIT-001/002；CRD-UNIT-001；VST-UNIT-001/002/003；VST-INT-001；SES-UNIT-001；TOL-UNIT-001/005/007/009 |
-| Failed | 2 | TOL-UNIT-002（`a=1` 实际抛 `SyntaxError`，与计划的 `ValueError` 不符）；TOL-UNIT-006（两个参数节点分别逃逸 `TypeError`、`SyntaxError`） |
+| Failed | 2 | TOL-UNIT-002、TOL-UNIT-006（整改前完整套件历史结果；两项已在整改定向复验中通过，完整套件尚未复验） |
 | XFailed | 1 | TOL-UNIT-003（`strict=True`，DEF-01；当前错误返回 `"3"`，目标为 `"3.14"`） |
 | Blocked / Not Executed | 0 | 无 |
 
@@ -37,10 +59,10 @@ Stage 1 Test ID 状态：
 
 覆盖率：`Not Available`。原因是当前项目未声明或安装 `pytest-cov`，本轮按要求未擅自新增依赖，不能提供或推测覆盖率百分比。
 
-计划核对发现两处需人工评审的事实问题，未直接修改 `TEST_PLAN.md`：
+整改前计划核对曾发现两处事实问题：
 
 1. TOL-UNIT-001 中 `3**4+sqrt(2)*sqrt(8)` 的手算结果是 `85.0`，计划写为 `97.0`；测试按数学正确值断言。
-2. TOL-UNIT-002 将 `a=1` 列为应抛 `ValueError` 且称已实测，但实际 `ast.parse(..., mode="eval")` 抛 `SyntaxError`；该行为也落入 TOL-UNIT-006 要求统一转换的异常边界。
+2. TOL-UNIT-002 曾将 `a=1` 列为应抛 `ValueError`，但实际 `ast.parse(..., mode="eval")` 抛 `SyntaxError`；该测试契约已在本次定向复验前修正并通过。
 
 ## 阶段 0 执行记录
 
@@ -71,15 +93,15 @@ Stage 1 Test ID 状态：
 ## 范围状态
 
 - 阶段 0：`Passed`（8 collected / 8 passed / 0 failed / 0 skipped / 0 xfailed / 0 deselected）
-- 阶段 1：`Failed`（16 Test ID：13 Passed / 2 Failed / 1 XFailed；47 nodes：43 passed / 3 failed / 1 xfailed）
-- 阶段 2 及之后：`Not Executed`，不属于本次实施范围
+- 阶段 1：`Pending Full Re-run`（整改前完整结果为 13 Passed / 2 Failed / 1 XFailed；整改定向复验中 TOL-UNIT-002、TOL-UNIT-006 已 Passed，完整套件尚未执行）
+- 阶段 2 及之后：除 AGT-INT-003 为验证 DEF-02 而完成定向执行外，其余均为 `Not Executed`
 - `online` / `ai_eval` / `slow`：`Not Executed`，默认 marker 过滤
 
 ## 缺陷与阻塞
 
 - 新增缺陷：DEF-01、DEF-02
-- 关闭缺陷：无
-- 阻塞项：`pytest-cov` 未安装，无法生成覆盖率；DEF-02 未修复且本轮禁止修改业务代码
+- 关闭缺陷：DEF-02（TOL-UNIT-006、AGT-INT-003 定向复验通过）
+- 阻塞项：`pytest-cov` 未安装，无法生成覆盖率；Stage 1 完整默认套件尚未在整改后复验
 
 ## 与上次基线的变化
 
@@ -92,4 +114,4 @@ Stage 1 Test ID 状态：
 
 ## 下一步
 
-人工审核 DEF-01、DEF-02 与两处测试计划事实冲突；在业务修复或契约决策完成前，不进入阶段 2。本轮未修改业务代码，也未提交 Git。
+运行整改后的完整默认离线套件并核对 Stage 1 全部 Test ID；只有完整结果满足准入条件后，才能把 Stage 1 标记为 Passed。DEF-01 仍为 Open / XFailed，资源边界 TOL-UNIT-010 未执行且不属于本次整改记录。
