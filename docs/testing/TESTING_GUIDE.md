@@ -241,7 +241,7 @@ Aurora 当前没有关系型数据库、外部向量数据库或持久化 Sessio
 - 使用 `pytest.raises(ExpectedType, match=...)` 精确断言异常类型和稳定的上下文文本。
 - 不使用 `pytest.raises(Exception)`，除非计划明确要求验证宽泛边界本身；即使如此也应额外核对回退结果和副作用。
 - 异常路径必须验证 Session、文件和调用记录没有半完成写入。
-- 对当前会逃逸的 `TypeError`、`SyntaxError`、`AttributeError`，严格遵循计划的缺陷定标或现状锁定决策，不擅自把错误行为写成成功契约。
+- 对计划明确要求转换的预期异常，应精确断言转换结果和副作用；当前工具计算链中的非实数 `ValueError` 与表达式 `SyntaxError` 由 `execute_tool()` 转为模型可读错误。其他未预期的 `TypeError`、`AttributeError` 等仍应严格遵循计划的缺陷定标或现状锁定决策，不擅自写成成功契约。
 ## 13. 执行、失败、缺陷与状态更新
 ### 13.1 执行记录
 每次阶段验收至少记录：
@@ -316,7 +316,7 @@ CI 使用 Python 3.14，不注入 `DEEPSEEK_API_KEY`，上传 JUnit XML 以保�
 2. RAG `content=None` 的异常或降级方式，以及是否写回 Session。
 3. Agent 达 `max_rounds` 的异常或结构化状态契约。
 4. validator 如何区分中间计算与最终输出。
-5. `execute_tool()` 精度、`TypeError`/`SyntaxError` 边界和布尔字面量规则。
+5. `execute_tool()` 精度和布尔字面量规则；非实数与表达式语法错误的转换边界已按 TOL-UNIT-006、AGT-INT-003 定标，未预期 `TypeError` 的通用兜底仍不在该契约内。
 6. 全角字符清洗与索引重建/版本化策略。
 7. `Session.context()` 返回内部列表还是副本。
 8. DeepSeek 超时与重试是否成为显式项目配置。

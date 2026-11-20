@@ -77,10 +77,10 @@ def test_tol_unit_005__converts_supported_calculation_errors(expression):
 @pytest.mark.parametrize(
     "expression",
     ["(-8)**(1/3)", "1+"],
-    ids=["complex-result-type-error", "invalid-syntax"],
+    ids=["non-real-value-error", "syntax-error"],
 )
-def test_tol_unit_006__converts_uncaught_expression_errors(expression):
-    """TOL-UNIT-006 / DEF-02：TypeError 与 SyntaxError 应转换为错误字符串。"""
+def test_tol_unit_006__converts_expected_expression_errors(expression):
+    """TOL-UNIT-006 / DEF-02：非实数与语法错误应转换为错误字符串。"""
     result = execute_tool("calculate_expression", {"expr": expression})
 
     assert result.startswith("计算失败：")

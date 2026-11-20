@@ -32,7 +32,7 @@
 
 2. `openai` 实际安装版本为 `3.37.0`，默认 `connect=5s / read=600s / max_retries=2`，已核实而非引用通用常识。
 
-3. 工具层 `execute_tool()` 只捕获 `ValueError / ZeroDivisionError / OverflowError`；`(-8)**(1/3)` 会产生 `complex`，`float(complex)` 抛 **`TypeError` 逃逸**，会直接中断 opamp 链路（新发现，P0）。
+3. **历史审计状态（`9fec2c2` 时点）**：工具层 `execute_tool()` 只捕获 `ValueError / ZeroDivisionError / OverflowError`；`(-8)**(1/3)` 会产生 `complex`，`float(complex)` 抛 **`TypeError` 逃逸**，会直接中断 opamp 链路（当时新发现，P0）。当前实现已在 `calculate_expression()` 中以稳定 `ValueError` 拒绝非实数结果，并由 `execute_tool()` 转换为模型可读错误字符串。
 
 4. `calculate_expression("True")` 返回 `1`（`bool` 是 `int` 子类，命中了 `Constant` 白名单），属于类型放宽，需要显式固定或收紧（新发现，P2）。
 
@@ -300,7 +300,7 @@ P0 里有若干用例，其"当前行为"本身就是缺陷（关键字参数被
 
 |---|---|---|---|
 
-| **A. 缺陷定标** | 断言**正确行为**（当前必然失败） | `@pytest.mark.xfail(strict=True, reason="DEF-03 关键字参数被丢弃")` | TOL-UNIT-003、RTR-UNIT-005、RTR-UNIT-006、RAG-INT-004、RAG-INT-005、PIP-INT-005、AGT-INT-003 |
+| **A. 缺陷定标** | 断言**正确行为**（缺陷存在时必然失败） | `@pytest.mark.xfail(strict=True, reason="DEF-03 关键字参数被丢弃")` | 历史规划：TOL-UNIT-003、RTR-UNIT-005、RTR-UNIT-006、RAG-INT-004、RAG-INT-005、PIP-INT-005、AGT-INT-003；其中 AGT-INT-003 对应异常逃逸已整改，不再适用此分类 |
 
 | **B. 现状锁定** | 断言**当前行为**（含错误值），并注明修复时同步改断言 | 普通 `assert` + `# 修复 DEF-xx 后改此断言` | TOL-UNIT-004（`:g` 精度）、VST-UNIT-002（负 k）、CHK-UNIT-001（全角清洗）、SES-UNIT-002（返回内部 list） |
 
@@ -502,7 +502,7 @@ P0 里有若干用例，其"当前行为"本身就是缺陷（关键字参数被
 
 | TOL-UNIT-005 | tools | Unit | 异常转换矩阵 | `1/0`、`log(0)`、`sqrt(-1)`、`10**10000` | 全部返回 `"计算失败：…"` 字符串（实测通过） | 无 | 无 | P0 | Planned |
 
-| TOL-UNIT-006 | tools | Unit | **未捕获异常逃逸** | `(-8)**(1/3)`（`complex` → `float()` 抛 `TypeError`）；`"1+"`（`SyntaxError`） | `calculate_expression()` 保留精确计算异常；实测两者**都不被 `execute_tool()` 捕获**，会中断 opamp 链路。目标：由工具协议边界 `execute_tool()` 将预期的 `TypeError`/`SyntaxError` 转为错误字符串 | 无 | 无 | P0 | Planned |
+| TOL-UNIT-006 | tools | Unit | 预期表达式错误转换 | `(-8)**(1/3)`（计算产生 `complex`）；`"1+"`（`SyntaxError`） | `calculate_expression()` 对非实数结果抛稳定 `ValueError("计算结果不是实数")`，并保留 `ast.parse()` 的原生 `SyntaxError`；`execute_tool()` 分别转换为 `"计算失败：计算结果不是实数"` 和 `"计算失败：表达式语法错误"`，均不向 Agent 逃逸 | 无 | 无 | P0 | Planned |
 
 | TOL-UNIT-007 | tools | Unit | 分派与参数校验 | 未知工具名；`arguments` 非 dict；`expr` 缺失/空串/非字符串 | 返回可识别错误字符串，不抛异常 | 无 | 无 | P0 | Planned |
 
@@ -536,7 +536,7 @@ P0 里有若干用例，其"当前行为"本身就是缺陷（关键字参数被
 
 | AGT-INT-002 | agent→tools | Integration | 中间量误触发电压校验 | 先 `100000*3`，再 `0.5*10` | 现状：**每次** `calculate_expression` 都跑 validator，第 1 步就产生"饱和"警告 → 需决策"只校验最终输出"或"取消按工具名自动校验" | 真实 tools | scripted fake 捕获每轮消息 | P0 | Planned |
 
-| AGT-INT-003 | agent→tools | Integration | 工具异常不外溢 | 假 LLM 请求 `(-8)**(1/3)` | 现状：`TypeError` 逃出 `run_agent`，Pipeline 中断且 Session 不写回 → 修复后应作为 `tool` 消息回传 | 真实 tools | scripted fake | P0 | Planned |
+| AGT-INT-003 | agent→tools | Integration | 工具异常不外溢 | 假 LLM 请求 `(-8)**(1/3)` | 历史状态：`TypeError` 曾逃出 `run_agent` 并中断 Pipeline；当前预期：非实数错误作为 `tool` 消息和 trace 回传，Agent 继续下一轮并返回最终回答 | 真实 tools | scripted fake | P0 | Planned |
 
 ### 6.9 Pipeline 编排与端到端
 
@@ -776,7 +776,7 @@ tests/
 
 | `codebase-overview.md` "Router 坏 JSON 会回退" | 仅 JSON 语法错误回退；非 dict JSON → `AttributeError`，非数值 confidence → `ValueError`/`TypeError` |
 
-| `codebase-overview.md` 未提工具 `TypeError` 逃逸 | `(-8)**(1/3)` 会让 opamp 链路崩溃 |
+| **历史审计状态**：`codebase-overview.md` 未提工具 `TypeError` 逃逸 | `(-8)**(1/3)` 当时会让 opamp 链路崩溃；当前已由计算层拒绝非实数并在工具边界转换为错误字符串 |
 
 ---
 
@@ -786,7 +786,7 @@ tests/
 
 |---|---|---|---|---|
 
-| 1 | 工具层 `TypeError`/`SyntaxError` 逃逸 | 模型给一个合法但"非实数"的表达式即中断整条 opamp 链路 | `tools.py:132-136`；离线实测 | P0 |
+| 1 | **历史风险（已整改）**：工具层 `TypeError`/`SyntaxError` 逃逸 | 历史行为会因非实数或残缺表达式中断 opamp 链路；当前预期错误已转换为模型可读字符串 | 历史 `tools.py:132-136`；离线实测；当前由 TOL-UNIT-006、AGT-INT-003 覆盖 | P0 |
 
 | 2 | RAG `content=None`、Agent 轮数耗尽被当成功 | `None` 或占位文案写进历史，下一轮请求可能直接失败或语义污染 | `rag.py:93`、`agent.py:130`、`pipeline.py:155` | P0 |
 
@@ -947,7 +947,7 @@ tests/
 
 5. **`execute_tool` 精度**：`:g` 六位有效数字是否可接受？改成 `repr(value)` 会改变模型看到的字符串与既有 demo 输出。
 
-6. **工具异常边界**：`TypeError`（复数）、`SyntaxError`（残缺表达式）是否统一转成"计算失败：…"？这是本轮新发现的 P0 缺口。
+6. **工具异常边界（已按当前实现定标）**：非实数结果由 `calculate_expression()` 以稳定 `ValueError` 拒绝，残缺表达式保留 `SyntaxError`；两者均由 `execute_tool()` 转成"计算失败：…"。未预期的其他 `TypeError` 仍向上抛出，不在本项中宽泛捕获。
 
 7. **布尔字面量**：`True` 当前算作 `1`，是否收紧为非法？
 
@@ -969,7 +969,7 @@ tests/
 
 **已阅读**：`AGENTS.md`、`README.md`、`docs/codebase-overview.md`、`docs/testing/TEST_PLAN.md`（初版）、`pyproject.toml`、`.env.example`，以及 `src/aurora/` 全部 15 个文件、`scripts/` 全部 9 个文件、`data/eval_set.json`、`data/index/chunks.json`。
 
-**已执行的离线探针**（一次性命令，未写成测试文件，未联网）：
+**历史审计时点已执行的离线探针**（一次性命令，未写成测试文件，未联网；下表保留当时结果，不代表当前实现）：
 
 | 探针 | 结果 |
 
