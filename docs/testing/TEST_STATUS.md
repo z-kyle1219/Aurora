@@ -1,8 +1,8 @@
 # Aurora 测试执行状态
 
-> 状态日期：2026-11-19
+> 状态日期：2026-11-20
 >
-> 阶段：阶段 1（整改定向复验与整改后完整套件复跑均无失败；阶段定标待人工确认）
+> 阶段：阶段 1 已定标 `Passed`（2026-11-20 复验：完整默认套件 58 节点全部通过，DEF-01 已关闭）
 
 ## 基线与环境
 
@@ -103,29 +103,36 @@
 - `INF-UNIT-007`：对保留测试地址调用 `socket.socket.connect()`，确认该入口独立命中 socket 哨兵；socket 同时设置 1 秒超时作为失效兜底。
 - `INF-UNIT-008`：断言进程测试环境和 `config.DEEPSEEK_API_KEY` 都是 dummy key，且受控导入期间 `load_dotenv()` 拦截恰好发生一次。
 
-## DEF-01 整改记录（待复验）
+## DEF-01 整改与复验
 
 - 整改日期：2026-11-20
 - 契约变更：`_eval_node()` 遇到 `ast.Call.keywords` 时抛 `ValueError`，由 `execute_tool()` 转为 `计算失败：不支持关键字参数…`；位置参数 `round(3.14159, 2)` 仍返回 `"3.14"`。不再出现静默丢弃后返回 `"3"` 的错值路径。
 - 连带变更：`execute_tool()` 增加 `TypeError` 捕获，`sqrt()` 这类参数个数/类型错误不再穿出 `run_agent()`。
 - 测试变更：TOL-UNIT-003 去掉 `xfail(strict=True)`，改为「关键字参数显式拒绝 + 位置参数正确」两条断言；TOL-UNIT-006 增加 `wrong-arity` 参数节点。
-- 复验命令（本次未执行）：`$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q`
-- 预期节点：58 节点全部 passed、0 xfailed（原 56 节点：TOL-UNIT-003 由 1 节点拆为 2，TOL-UNIT-006 由 2 节点增为 3）。
-- 定标：DEF-01 保持 `Fixed / 待复验`；只有完整默认套件真实跑绿后，才能改为 `Closed` 并写入 revision、时间与输出。本文不预填执行结果。
+- 复验命令：`$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q`
+- 复验结果：2026-11-20，退出码 0，`58 passed in 0.28s`；0 failed / 0 skipped / 0 xfailed，与预期节点数一致（原 56 节点 + TOL-UNIT-003 拆出 1 + TOL-UNIT-006 新增 1）。
+- 定标：DEF-01 改为 `Closed`；阶段 1 不再保留任何授权 xfail。
+
+## TOL-UNIT-010 加固与复验
+
+- 代码：`MAX_EXPRESSION_LENGTH=300`（解析前检查）、`MAX_EXPONENT=1000` 与 `MAX_RESULT_BITS=100000`（`_eval_pow()` 中按底数位数×指数估算结果规模）。超限都经 `execute_tool()` 转为 `计算失败：…`。
+- 测试：`test_tol_unit_010__rejects_resource_exhausting_expressions`（子进程 + 20s 超时，4 个参数节点，标 `slow`）与 `test_tol_unit_010__keeps_ordinary_powers_working`（2 个参数节点，防误伤，进默认套件）。
+- 复验命令：`$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q -o addopts="" -m slow tests/unit/test_tools.py`
+- 复验结果：2026-11-20，退出码 0，`4 passed, 37 deselected in 0.27s`；同期默认套件 `60 passed, 4 deselected in 0.40s`。
+- 状态：`Passed`。
 
 ## 范围状态
 
 - 阶段 0：`Passed`（8 collected / 8 passed / 0 failed / 0 skipped / 0 xfailed / 0 deselected）
-- 阶段 1：`Pending Sign-off`（整改前完整结果为 13 Passed / 2 Failed / 1 XFailed；整改定向复验中 TOL-UNIT-002、TOL-UNIT-006 已 Passed；整改后完整套件复跑 56 节点 55 passed / 1 xfailed / 0 failed，退出码 0，阶段定标待人工确认）
+- 阶段 1：`Passed`（2026-11-20 完整默认套件 58 节点全部 passed，0 failed / 0 skipped / 0 xfailed，退出码 0；DEF-01 已关闭，无授权 xfail）
 - 阶段 2 及之后：除 AGT-INT-003 为验证 DEF-02 而完成定向执行外，其余均为 `Not Executed`
-- `online` / `ai_eval` / `slow`：`Not Executed`，默认 marker 过滤
+- `online` / `ai_eval`：`Not Executed`，默认 marker 过滤；`slow`：TOL-UNIT-010 已执行（2026-11-20，4 passed），其余 slow 用例未执行
 
 ## 缺陷与阻塞
 
 - 新增缺陷：DEF-01、DEF-02
-- 关闭缺陷：DEF-02（TOL-UNIT-006、AGT-INT-003 定向复验通过）
-- 待复验：DEF-01（代码与测试已整改，等待完整套件复跑；见上节）
-- 阻塞项：`pytest-cov` 未安装，无法生成覆盖率；Stage 1 阶段定标待人工确认（整改后完整套件复跑已无失败）
+- 关闭缺陷：DEF-02（TOL-UNIT-006、AGT-INT-003 定向复验通过）；DEF-01（2026-11-20 完整默认套件 58 passed）
+- 阻塞项：`pytest-cov` 未安装，无法生成覆盖率；阶段 1 定标已不再阻塞
 
 ## 与上次基线的变化
 
@@ -135,6 +142,9 @@
 - 建立阶段 0 自检及缺陷、执行状态文档。
 - 根据独立审计拆分三层防线自检，修正 `Chunk` Fixture，消除本机 `.env`/真实 key 依赖，并登记稳定 Test ID。
 - 增加 `socket.socket.connect`、业务模块绑定引用与 dotenv 导入顺序回归保护；删除未使用的 `MALFORMED_ARGUMENTS`。
+- 2026-11-20：修复 DEF-01（关键字参数显式拒绝 + `TypeError` 转换），TOL-UNIT-003 去掉 xfail，TOL-UNIT-006 增加参数节点。
+- 2026-11-20：完整默认套件 `58 passed`，阶段 1 定标 `Passed`；DEF-01、DEF-02 记录补齐决策人与关闭证据。
+- 2026-11-20：工具加表达式长度/指数/结果规模上限，新增 TOL-UNIT-010（4 个 slow 节点 + 2 个默认节点）；默认套件 `60 passed, 4 deselected`，slow `4 passed`。
 
 ## 下一步
 
@@ -142,7 +152,7 @@
 
 2026-11-20 更新后的待办顺序：
 
-1. 执行完整默认套件，确认 58 节点全部 passed、0 xfailed；据此把 DEF-01 改为 `Closed`。
-2. 以该次输出为准，对 Stage 1 做最终定标（通过条件：全部 passed 且无未登记失败）。
+1. ~~执行完整默认套件，确认 58 节点全部 passed、0 xfailed；据此把 DEF-01 改为 `Closed`。~~ 已完成（`58 passed in 0.28s`）。
+2. ~~以该次输出为准，对 Stage 1 做最终定标。~~ 已完成（`Passed`）。
 3. 进入阶段 2（Router / Rewrite / Judge / Agent 畸形响应与失败路径）。
-4. 在做 Web/API 入口之前完成 TOL-UNIT-010（表达式长度、指数、AST 深度上限 + 子进程慢测）。
+4. ~~在做 Web/API 入口之前执行 TOL-UNIT-010 的 `slow` 用例~~ 已完成（`4 passed, 37 deselected`）；上限已生效，阶段 1 收口。
