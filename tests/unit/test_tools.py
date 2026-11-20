@@ -1,7 +1,10 @@
 """本地计算工具纯逻辑测试。"""
 
+import json
 import math
 import os
+import subprocess
+import sys
 
 import pytest
 
@@ -69,7 +72,7 @@ def test_tol_unit_003__positional_round_keeps_precision():
 
 @pytest.mark.parametrize(
     "expression",
-    ["1/0", "log(0)", "sqrt(-1)", "10**10000"],
+    ["1/0", "log(0)", "sqrt(-1)", "10**1000"],
     ids=["division-by-zero", "log-domain", "sqrt-domain", "float-overflow"],
 )
 def test_tol_unit_005__converts_supported_calculation_errors(expression):
@@ -108,6 +111,53 @@ def test_tol_unit_006__converts_expected_expression_errors(expression):
 def test_tol_unit_007__validates_dispatch_name_and_arguments(name, arguments, expected):
     """TOL-UNIT-007：未知工具和非法参数返回精确、可识别错误。"""
     assert execute_tool(name, arguments) == expected
+
+
+_RESOURCE_PROBE = """
+import json
+import sys
+
+from aurora.tools import execute_tool
+
+expression = json.loads(sys.argv[1])
+print(execute_tool("calculate_expression", {"expr": expression}))
+"""
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    ("expression", "expected_fragment"),
+    [
+        ("10**10000000", "指数过大"),
+        ("9**9**9", "指数过大"),
+        ("(10**1000)**1000", "结果规模超限"),
+        ("(" * 200 + "1" + ")" * 200, "表达式过长"),
+    ],
+    ids=["huge-exponent", "power-tower", "nested-base-power", "deep-nesting"],
+)
+def test_tol_unit_010__rejects_resource_exhausting_expressions(
+    expression, expected_fragment
+):
+    """TOL-UNIT-010：巨型幂与深嵌套在子进程中求解前被拒，不拖垮主进程。"""
+    completed = subprocess.run(
+        [sys.executable, "-c", _RESOURCE_PROBE, json.dumps(expression)],
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert expected_fragment in completed.stdout
+
+
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [("2**10", "1024"), ("2**0.5", "1.41421")],
+    ids=["integer-exponent", "fractional-exponent"],
+)
+def test_tol_unit_010__keeps_ordinary_powers_working(expression, expected):
+    """TOL-UNIT-010：上限不得误伤普通幂运算（整数次与分数次幂都照常）。"""
+    assert execute_tool("calculate_expression", {"expr": expression}) == expected
 
 
 @pytest.mark.parametrize(

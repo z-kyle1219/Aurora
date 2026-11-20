@@ -51,6 +51,12 @@ _ALLOWED_FUNCS = {
     "pow": pow,
 }
 
+# 资源上限：模型输出是「半可信输入」，一个很短的表达式就能构造出巨型整数幂
+# （10**10000000、9**9**9），必须在求解前卡住规模，否则会拖垮进程。
+MAX_EXPRESSION_LENGTH = 300
+MAX_EXPONENT = 1000
+MAX_RESULT_BITS = 100_000  # 约 3 万位十进制，足够教学题，远低于拖垮内存
+
 
 def _eval_node(node: ast.AST) -> float:
     """递归求值一个 AST 节点。只有进了白名单的节点类型才会走到这里。"""
@@ -59,6 +65,8 @@ def _eval_node(node: ast.AST) -> float:
     if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
         return node.value
     if isinstance(node, ast.BinOp) and type(node.op) in _BIN_OPS:
+        if isinstance(node.op, ast.Pow):
+            return _eval_pow(node.left, node.right)
         return _BIN_OPS[type(node.op)](_eval_node(node.left), _eval_node(node.right))
     if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY_OPS:
         return _UNARY_OPS[type(node.op)](_eval_node(node.operand))
@@ -80,11 +88,30 @@ def _eval_node(node: ast.AST) -> float:
     raise ValueError(f"表达式包含不允许的语法：{ast.dump(node)[:60]}…")
 
 
+def _eval_pow(base_node: ast.AST, exponent_node: ast.AST) -> float:
+    """幂运算单独设闸：指数大小和结果位数都必须有上界。
+
+    只限制指数不够：`(10**1000)**1000` 的指数合法，结果却有一百万位。
+    所以按「底数位数 × 指数」估算结果规模，超限在计算前拒绝。
+    """
+    exponent = _eval_node(exponent_node)
+    if abs(exponent) > MAX_EXPONENT:
+        raise ValueError(f"指数过大，绝对值不得超过 {MAX_EXPONENT}")
+
+    base = _eval_node(base_node)
+    if isinstance(base, int) and abs(base) > 1:
+        if base.bit_length() * abs(exponent) > MAX_RESULT_BITS:
+            raise ValueError("结果规模超限，请拆分计算")
+    return base ** exponent
+
+
 def calculate_expression(expr: str) -> float:
     """用白名单安全地计算一个数学表达式，返回数值。
 
     例：calculate_expression("-(100/10)*(-3)") -> 30.0
     """
+    if len(expr) > MAX_EXPRESSION_LENGTH:
+        raise ValueError(f"表达式过长，最多 {MAX_EXPRESSION_LENGTH} 个字符")
     tree = ast.parse(expr, mode="eval")
     value = _eval_node(tree)
     if isinstance(value, complex):
