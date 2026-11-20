@@ -300,7 +300,7 @@ P0 里有若干用例，其"当前行为"本身就是缺陷（关键字参数被
 
 |---|---|---|---|
 
-| **A. 缺陷定标** | 断言**正确行为**（缺陷存在时必然失败） | `@pytest.mark.xfail(strict=True, reason="DEF-03 关键字参数被丢弃")` | 历史规划：TOL-UNIT-003、RTR-UNIT-005、RTR-UNIT-006、RAG-INT-004、RAG-INT-005、PIP-INT-005、AGT-INT-003；其中 AGT-INT-003 对应异常逃逸已整改，不再适用此分类 |
+| **A. 缺陷定标** | 断言**正确行为**（缺陷存在时必然失败） | `@pytest.mark.xfail(strict=True, reason="DEF-01 关键字参数被丢弃")` | 历史规划：RTR-UNIT-005、RTR-UNIT-006、RAG-INT-004、RAG-INT-005、PIP-INT-005；其中 AGT-INT-003 对应异常逃逸已整改、TOL-UNIT-003 已改为显式拒绝契约，两者不再适用此分类 |
 
 | **B. 现状锁定** | 断言**当前行为**（含错误值），并注明修复时同步改断言 | 普通 `assert` + `# 修复 DEF-xx 后改此断言` | TOL-UNIT-004（`:g` 精度）、VST-UNIT-002（负 k）、CHK-UNIT-001（全角清洗）、SES-UNIT-002（返回内部 list） |
 
@@ -496,13 +496,13 @@ P0 里有若干用例，其"当前行为"本身就是缺陷（关键字参数被
 
 | TOL-UNIT-002 | tools | Unit | 拒绝危险语法 | `__import__("os").system(...)`、`(1).__class__`、`[1,2][0]`、`lambda:1`、`a=1`、字符串拼接 | `a=1` 在 `ast.parse(..., mode="eval")` 阶段抛原生 `SyntaxError`；其余可成功解析但不在 AST 白名单中的表达式抛 `ValueError`；全部被拒且无副作用 | 无 | 无 | P0 | Planned |
 
-| TOL-UNIT-003 | tools | Unit | 关键字参数必须生效（缺陷定标） | `round(3.14159, ndigits=2)` | 正确值为 `"3.14"`；实测当前返回 `"3"`（等价 `round(3.14159)`，关键字被丢弃且无告警）→ 按 §4.4-A 写 `xfail(strict=True)`，修复后去掉标记 | 无 | 无 | P0 | Planned |
+| TOL-UNIT-003 | tools | Unit | 关键字参数不得静默改写语义（DEF-01） | `round(3.14159, ndigits=2)`；`round(3.14159, 2)` | 前者返回 `计算失败：不支持关键字参数…`（显式拒绝），后者返回 `"3.14"`；不允许再出现静默丢弃后返回 `"3"` | 无 | 无 | P0 | Existing / Not Executed |
 
 | TOL-UNIT-004 | tools | Unit | 精度截断 | `123456789`、`100/3`、`2**40` | 实测 `"1.23457e+08"`、`"33.3333"`、`"1.09951e+12"`（`:g` 仅 6 位有效数字）→ 测死当前行为，修复后应保留足够精度 | 无 | 无 | P1 | Planned |
 
 | TOL-UNIT-005 | tools | Unit | 异常转换矩阵 | `1/0`、`log(0)`、`sqrt(-1)`、`10**10000` | 全部返回 `"计算失败：…"` 字符串（实测通过） | 无 | 无 | P0 | Planned |
 
-| TOL-UNIT-006 | tools | Unit | 预期表达式错误转换 | `(-8)**(1/3)`（计算产生 `complex`）；`"1+"`（`SyntaxError`） | `calculate_expression()` 对非实数结果抛稳定 `ValueError("计算结果不是实数")`，并保留 `ast.parse()` 的原生 `SyntaxError`；`execute_tool()` 分别转换为 `"计算失败：计算结果不是实数"` 和 `"计算失败：表达式语法错误"`，均不向 Agent 逃逸 | 无 | 无 | P0 | Planned |
+| TOL-UNIT-006 | tools | Unit | 预期表达式错误转换（DEF-02） | `(-8)**(1/3)`（复数结果）；`"1+"`（`SyntaxError`）；`sqrt()`（参数个数不符的 `TypeError`） | `calculate_expression()` 对非实数抛 `ValueError("计算结果不是实数")` 并保留 `ast.parse()` 原生 `SyntaxError`；`execute_tool()` 分别转为 `计算失败：计算结果不是实数`、`计算失败：表达式语法错误`、`计算失败：参数不匹配…`，均不向 `run_agent()` 逃逸 | 无 | 无 | P0 | Existing / Not Executed |
 
 | TOL-UNIT-007 | tools | Unit | 分派与参数校验 | 未知工具名；`arguments` 非 dict；`expr` 缺失/空串/非字符串 | 返回可识别错误字符串，不抛异常 | 无 | 无 | P0 | Planned |
 
@@ -796,7 +796,7 @@ tests/
 
 | 5 | 五分支与失败写回无回归 | 分支错配、半轮历史污染不可见 | 全仓 0 用例 | P0 |
 
-| 6 | `execute_tool` 关键字参数静默丢弃 + 6 位精度 | `round(x, ndigits=2)` 返回错值且**无任何告警**，而提示词要求模型"直接引用工具结果"→ 错值被当标准答案写进回答 | 实测 `"3"`、`"1.23457e+08"` | P0（错值）/ P1（精度） |
+| 6 | `execute_tool` 关键字参数被静默丢弃（已整改为显式拒绝）+ 6 位精度未处理 | 整改前：`round(x, ndigits=2)` 返回错值且**无任何告警**，而提示词要求模型“直接引用工具结果”→ 错值被当标准答案写进回答；精度问题仍在 | 整改前实测 `"3"`；遗留 `"1.23457e+08"` | P0（已整改，待复验）/ P1（精度） |
 
 | 7 | 向量与 chunk 数量/维度无校验 | 索引损坏时错配命中或深层异常 | `vector_store.py:52-67` | P1 |
 

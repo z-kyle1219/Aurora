@@ -103,6 +103,16 @@
 - `INF-UNIT-007`：对保留测试地址调用 `socket.socket.connect()`，确认该入口独立命中 socket 哨兵；socket 同时设置 1 秒超时作为失效兜底。
 - `INF-UNIT-008`：断言进程测试环境和 `config.DEEPSEEK_API_KEY` 都是 dummy key，且受控导入期间 `load_dotenv()` 拦截恰好发生一次。
 
+## DEF-01 整改记录（待复验）
+
+- 整改日期：2026-11-20
+- 契约变更：`_eval_node()` 遇到 `ast.Call.keywords` 时抛 `ValueError`，由 `execute_tool()` 转为 `计算失败：不支持关键字参数…`；位置参数 `round(3.14159, 2)` 仍返回 `"3.14"`。不再出现静默丢弃后返回 `"3"` 的错值路径。
+- 连带变更：`execute_tool()` 增加 `TypeError` 捕获，`sqrt()` 这类参数个数/类型错误不再穿出 `run_agent()`。
+- 测试变更：TOL-UNIT-003 去掉 `xfail(strict=True)`，改为「关键字参数显式拒绝 + 位置参数正确」两条断言；TOL-UNIT-006 增加 `wrong-arity` 参数节点。
+- 复验命令（本次未执行）：`$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q`
+- 预期节点：58 节点全部 passed、0 xfailed（原 56 节点：TOL-UNIT-003 由 1 节点拆为 2，TOL-UNIT-006 由 2 节点增为 3）。
+- 定标：DEF-01 保持 `Fixed / 待复验`；只有完整默认套件真实跑绿后，才能改为 `Closed` 并写入 revision、时间与输出。本文不预填执行结果。
+
 ## 范围状态
 
 - 阶段 0：`Passed`（8 collected / 8 passed / 0 failed / 0 skipped / 0 xfailed / 0 deselected）
@@ -114,6 +124,7 @@
 
 - 新增缺陷：DEF-01、DEF-02
 - 关闭缺陷：DEF-02（TOL-UNIT-006、AGT-INT-003 定向复验通过）
+- 待复验：DEF-01（代码与测试已整改，等待完整套件复跑；见上节）
 - 阻塞项：`pytest-cov` 未安装，无法生成覆盖率；Stage 1 阶段定标待人工确认（整改后完整套件复跑已无失败）
 
 ## 与上次基线的变化
@@ -127,4 +138,11 @@
 
 ## 下一步
 
-核对 Stage 1 全部 Test ID 在整改后的状态，并确认是否把阶段 1 标记为 Passed：整改后完整默认离线套件已于 2026-11-19 20:25:56 复跑（`55 passed, 1 xfailed`，56 节点，退出码 0），该次执行只补执行证据，未自行改写阶段状态。DEF-01 仍为 Open / XFailed，资源边界 TOL-UNIT-010 未执行且不属于本次整改记录。
+核对 Stage 1 全部 Test ID 在整改后的状态，并确认是否把阶段 1 标记为 Passed：整改后完整默认离线套件已于 2026-11-19 20:25:56 复跑（`55 passed, 1 xfailed`，56 节点，退出码 0），该次执行只补执行证据，未自行改写阶段状态。资源边界 TOL-UNIT-010 未执行且不属于本次整改记录。
+
+2026-11-20 更新后的待办顺序：
+
+1. 执行完整默认套件，确认 58 节点全部 passed、0 xfailed；据此把 DEF-01 改为 `Closed`。
+2. 以该次输出为准，对 Stage 1 做最终定标（通过条件：全部 passed 且无未登记失败）。
+3. 进入阶段 2（Router / Rewrite / Judge / Agent 畸形响应与失败路径）。
+4. 在做 Web/API 入口之前完成 TOL-UNIT-010（表达式长度、指数、AST 深度上限 + 子进程慢测）。

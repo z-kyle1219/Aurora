@@ -69,6 +69,13 @@ def _eval_node(node: ast.AST) -> float:
         and isinstance(node.func, ast.Name)
         and node.func.id in _ALLOWED_FUNCS
     ):
+        # 关键字参数没有白名单可依：静默丢弃会改变计算语义
+        # （round(3.14159, ndigits=2) 会退化成 round(3.14159) = 3，且不报错），
+        # 所以显式拒绝，让模型换成位置参数重试。
+        if node.keywords:
+            raise ValueError(
+                "不支持关键字参数，请改用位置参数，例如 round(3.14159, 2)"
+            )
         return _ALLOWED_FUNCS[node.func.id](*[_eval_node(a) for a in node.args])
     raise ValueError(f"表达式包含不允许的语法：{ast.dump(node)[:60]}…")
 
@@ -97,6 +104,7 @@ CALCULATOR_TOOL = {
             "用 Python 精确计算一个数学表达式，返回数值结果。"
             "任何需要算术计算的环节都必须调用本工具，不要心算。"
             "支持 + - * / ** 以及 sqrt、sin、cos、log、exp 等函数。"
+            "参数只支持位置写法，不支持 name=value 关键字写法。"
         ),
         "parameters": {
             "type": "object",
@@ -138,6 +146,10 @@ def execute_tool(name: str, arguments: dict) -> str:
         return "计算失败：表达式语法错误"
     except (ValueError, ZeroDivisionError, OverflowError) as exc:
         return f"计算失败：{exc}"
+    except TypeError:
+        # 参数个数或类型不匹配（如 sqrt()）同样属于「预期错误」，
+        # 必须留在工具边界，不能让 TypeError 穿出 run_agent 中断整轮流水线。
+        return "计算失败：参数不匹配，请检查函数参数个数与类型"
     return f"{value:g}"
 
 

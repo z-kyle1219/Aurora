@@ -53,12 +53,18 @@ def test_tol_unit_002__rejects_dangerous_or_non_numeric_syntax(
     assert system_calls == []
 
 
-@pytest.mark.xfail(strict=True, reason="DEF-01 关键字参数被静默丢弃")
-def test_tol_unit_003__keyword_arguments_take_effect():
-    """TOL-UNIT-003 / DEF-01：round 的关键字参数必须实际参与计算。"""
-    assert execute_tool(
-        "calculate_expression", {"expr": "round(3.14159, ndigits=2)"}
-    ) == "3.14"
+def test_tol_unit_003__keyword_arguments_are_rejected_explicitly():
+    """TOL-UNIT-003 / DEF-01：关键字参数不再被静默丢弃，而是显式拒绝。"""
+    result = execute_tool("calculate_expression", {"expr": "round(3.14159, ndigits=2)"})
+
+    assert result.startswith("计算失败：")
+    assert "关键字参数" in result
+    assert result != "3"
+
+
+def test_tol_unit_003__positional_round_keeps_precision():
+    """TOL-UNIT-003：拒绝关键字参数不影响位置参数写法（round(x, 2) 仍为 3.14）。"""
+    assert execute_tool("calculate_expression", {"expr": "round(3.14159, 2)"}) == "3.14"
 
 
 @pytest.mark.parametrize(
@@ -76,11 +82,11 @@ def test_tol_unit_005__converts_supported_calculation_errors(expression):
 
 @pytest.mark.parametrize(
     "expression",
-    ["(-8)**(1/3)", "1+"],
-    ids=["non-real-value-error", "syntax-error"],
+    ["(-8)**(1/3)", "1+", "sqrt()"],
+    ids=["non-real-value-error", "syntax-error", "wrong-arity"],
 )
 def test_tol_unit_006__converts_expected_expression_errors(expression):
-    """TOL-UNIT-006 / DEF-02：非实数与语法错误应转换为错误字符串。"""
+    """TOL-UNIT-006 / DEF-02：非实数、语法错误与参数个数错误都转换为错误字符串。"""
     result = execute_tool("calculate_expression", {"expr": expression})
 
     assert result.startswith("计算失败：")
