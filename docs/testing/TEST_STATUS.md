@@ -6,22 +6,22 @@
 
 | 阶段 | 状态 | 依据 |
 |---|---|---|
-| 阶段 0 测试基础设施 | `Not Executed` | 新证据基线待验收 |
-| 阶段 1 纯逻辑 P0 | `Not Executed` | 新证据基线待验收 |
+| 阶段 0 测试基础设施 | `Passed` | `runs/2026-11-21-stage1.md` |
+| 阶段 1 纯逻辑 P0 | `Passed` | `runs/2026-11-21-stage1.md` |
 | 阶段 2 协议与编排 | `Not Executed` | 下一步 |
 | 阶段 3 及之后 | `Not Executed` | — |
 
 ## 最近一次验收
 
-- 尚未按当前证据规则执行。
+- 日期：2026-11-21
+- revision：`a10a10d`
+- 验收记录：`runs/2026-11-21-stage1.md`
 
 ## 当前阻塞
 
 - `pytest-cov` 未安装，覆盖率不可用
 - 未关闭缺陷见 `DEFECTS.md`，按其「状态」列判断
-- 阶段 0/1 需基于本次文档基线重新验收
 
 ## 下一步
 
-1. 重新验收阶段 0/1 并建立首份可追溯 run
-2. 阶段 2：Router / Rewrite / Judge / Agent 的畸形响应与失败路径
+1. 阶段 2：Router / Rewrite / Judge / Agent 的畸形响应与失败路径
