@@ -1,7 +1,7 @@
 [project]
 name = "aurora"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Python teaching assistant prototype for analog electronics"
 readme = "README.md"
 authors = [
     { name = "kyle", email = "zsq061219@qq.com" }
