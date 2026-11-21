@@ -209,7 +209,7 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 
 > 通用约定：`fake` = 一个实现了 `chat.completions.create(**kwargs)` 的替身，返回 `SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=..., tool_calls=...), finish_reason="stop")])`。所有 `Planned` 用例默认断网。
 >
-> Status 列已删除：本节的表只描述用例设计（目标、输入、期望、依赖、Mock 策略、优先级），是否实现、是否执行、是否通过一律只看 `docs/testing/TEST_STATUS.md`。
+> Status 列已删除：本节的表只描述用例设计（目标、输入、期望、依赖、Mock 策略、优先级）。是否实现以 `tests/` 下含 Test ID 的函数名为准；当前执行判定与证据入口见 `docs/testing/TEST_STATUS.md`。
 
 ### 6.1 配置层 `config.py`
 

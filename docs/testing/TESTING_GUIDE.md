@@ -29,7 +29,7 @@ uv sync --frozen --dev
 ```
 pytest 的实际版本由 `uv.lock` 决定，`pyproject.toml` 中的声明是版本下限；具体解析到哪个版本以锁文件与 `uv run pytest --version` 为准，不在文档中固定记录。提交前使用 `uv lock --check` 验证 `pyproject.toml` 与 `uv.lock` 一致。
 ### 2.2 pytest 配置
-`pyproject.toml` 必须包含以下配置；是否生效以 `TEST_STATUS.md` 记录的执行结果为准：
+`pyproject.toml` 必须包含以下配置；当前是否通过验收及对应证据入口以 `TEST_STATUS.md` 为准：
 ```toml
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -277,7 +277,7 @@ Aurora 当前没有关系型数据库、外部向量数据库或持久化 Sessio
 
 每次验收按 §13.1 的保留标准写入一个新文件，一次验收一个文件，写入后不再修改；需要复核时新建文件，不改旧文件。`TEST_STATUS.md` 只保留摘要和指向该文件的路径，不复述该文件的内容，也不累计历次验收的摘要。
 
-命名：`YYYY-MM-DD-stage<N>.md`、`YYYY-MM-DD-def<NN>.md`；同一天同一维度多次验收追加时间或序号（如 `-2`、`-1430`），不使用 `rerun` 等含糊词。
+命名：`YYYY-MM-DD-stage<N>.md`、`YYYY-MM-DD-def<NN>.md`；同一天同一维度多次验收追加时间或序号（如 `-2`、`-1430`），不使用 `rerun` 等含糊词。一次命令组联合验收连续阶段时，以最高阶段命名，相关阶段可共同指向该 run；文件内必须明确联合验收范围。
 
 失败记录与通过记录同构，必须写：判定（`Failed`）、失败 Test ID、未执行范围；原因未定位时明写"未定位"，不写"待查"。
 

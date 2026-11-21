@@ -10,7 +10,7 @@
 
 本文档是静态分析结果，不代表外部模型调用、索引重建或评测已经在当前环境中执行成功。
 
-核对基线：commit `6033b13`（2026-11-20）+ 未提交工作区改动（2026-11-21）。本次复核第 7.2 节（安全执行）、第 11 节（异常处理）与第 12 节（测试现状）；其余章节仍为 `cf01520`（2026-11-18）时点的静态分析结果。
+核对范围：全文初始静态分析基于 commit `cf01520`（2026-11-18）；第 7.2 节（安全执行）、第 11 节（异常处理）与第 12 节（测试现状）已复核至 commit `6a85313`（2026-11-21）。
 
 ## 1. 项目定位
 
@@ -355,7 +355,7 @@ class Session:
 
 ## 12. 测试与评测现状
 
-仓库已建立 pytest 阶段 0 基础设施与阶段 1 纯逻辑用例：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及 `tools` / `chunker` / `card_loader` / `vector_store` / `session` / `config` 的单元与集成用例。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；阶段 2 及之后的协议、编排与 E2E 用例以及 CI 仍未建立。执行证据以 `docs/testing/TEST_STATUS.md` 为准。
+仓库已建立 pytest 阶段 0 基础设施与阶段 1 纯逻辑用例：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及 `tools` / `chunker` / `card_loader` / `vector_store` / `session` / `config` 的单元与集成用例。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；阶段 2 及之后尚未整阶段建立，阶段 3 的 `AGT-INT-003` 因 DEF-02 验证提前完成；E2E 与 CI 仍未建立。当前判定及证据入口以 `docs/testing/TEST_STATUS.md` 为准。
 
 ### 12.1 快速评测
 
@@ -383,7 +383,7 @@ class Session:
 
 ### 12.3 当前测试结论
 
-测试覆盖与执行结果以 `docs/testing/TEST_STATUS.md` 为准，覆盖缺口见 `docs/testing/TEST_PLAN.md` §10。本文不复述通过数量或具体执行结果，避免与状态文档重复维护。
+测试当前判定与证据入口以 `docs/testing/TEST_STATUS.md` 为准，具体执行读数保留在其指向的 run 中，覆盖缺口见 `docs/testing/TEST_PLAN.md` §10。本文不复述通过数量，避免重复维护。
 
 ## 13. 已知技术债务与风险
 
@@ -441,7 +441,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - 多轮问题改写。
 - 固定降级回答。
 - 脚本式分类、答案、幻觉、引用和延迟评测。
-- 阶段 0/1 离线 pytest 套件（节点数量与结果见 `docs/testing/TEST_STATUS.md`）。
+- 阶段 0/1 离线 pytest 套件（当前判定见 `docs/testing/TEST_STATUS.md`，本次节点数量与执行读数见 `docs/testing/runs/2026-11-21-stage1.md`）。
 
 ### 未实现
 
@@ -450,7 +450,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - Session 持久化、隔离和并发管理。
 - 日志、监控、统一异常响应和调用重试。
 - 相似度阈值、混合检索和 rerank。
-- CI 自动执行；阶段 2 之后的协议、编排与 E2E 用例。
+- CI 自动执行；阶段 2 之后尚未整阶段建立的协议、编排与 E2E 用例（`AGT-INT-003` 已提前完成）。
 - 通用工具注册、外部工具和并行工具执行。
 
 ### 未知

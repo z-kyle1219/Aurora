@@ -9,7 +9,7 @@
 | 阶段 0 测试基础设施 | `Passed` | `runs/2026-11-21-stage1.md` |
 | 阶段 1 纯逻辑 P0 | `Passed` | `runs/2026-11-21-stage1.md` |
 | 阶段 2 协议与编排 | `Not Executed` | 下一步 |
-| 阶段 3 及之后 | `Not Executed` | — |
+| 阶段 3 及之后 | `Not Executed` | 尚未整阶段验收；`AGT-INT-003` 因 DEF-02 验证提前完成 |
 
 ## 最近一次验收
 
