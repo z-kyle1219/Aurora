@@ -438,6 +438,8 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 
 其中 TOL-UNIT-003 断言关键字参数被显式拒绝、位置参数仍正确。
 
+补充加固：`TOL-UNIT-010`（P2、`slow`）单独执行，不作为阶段 1 P0 准入项，但阶段验收必须显式报告其执行状态。
+
 **准入**：上述用例全部 `passed` 或 `xfailed`（`xfail(strict=True)` 意外 `XPASS` 视为未通过）；不得用 `-k` / `--deselect` 排除已列入清单的用例；任何真实失败必须对应已登记缺陷，不允许"改测试迁就代码"。
 
 ### 阶段 2：结构化协议与失败路径（1.5 天）
@@ -491,15 +493,10 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 **每个 PR 必跑（离线，<3 分钟）**：
 
 ```yaml
-
 - uv sync --frozen --dev          # 锁文件必须一致
-
 - uv run pytest -q                # 默认排除 online/ai_eval/slow
-
 - git diff --check                # 空白/冲突标记
-
 - uv lock --check
-
 ```
 
 要点：

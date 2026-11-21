@@ -82,7 +82,7 @@ tests/
     └── test_<capability>_online.py
 ```
 - 测试文件统一使用 `test_<subject>.py`。Unit 文件原则上与 `src/aurora/<module>.py` 对应；跨模块文件按被验证的调用链命名。
-- 测试函数使用 `test_<test_id_lowercase>__<behavior>()`，例如 `test_tol_unit_003__keyword_arguments_take_effect()`。双下划线前是计划中的稳定 ID，后面是可读行为。
+- 测试函数使用 `test_<test_id_lowercase>__<behavior>()`，例如 `test_tol_unit_003__keyword_arguments_are_rejected_explicitly()`。双下划线前是计划中的稳定 ID，后面是可读行为。
 - 参数化用例仍保留一个 Test ID，参数 `id=` 描述场景，例如 `id="confidence-null"`，不得为每个参数临时创造未登记的计划 ID。
 - 用例 ID 必须直接取自 `TEST_PLAN.md`，格式为 `<模块>-<层级>-<三位序号>`，如 `RAG-INT-005`。新增范围或改变优先级必须先回到计划评审，不能只在测试文件中扩张。
 - 测试函数的首行 docstring 或紧邻注释应写明完整 Test ID、目标和关联缺陷号；测试报告必须能从 node id 追溯到计划用例。
