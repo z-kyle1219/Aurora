@@ -8,6 +8,8 @@
 
 代码级架构、完整调用链、接口约定、测试现状与已知风险见 [代码库现状说明](docs/codebase-overview.md)。
 
+**文档基线**：本 README 核对于 commit `6033b13`（2026-11-20）。测试执行结果只以 [测试状态](docs/testing/TEST_STATUS.md) 为准，这里不复述通过的用例数，避免两处各写一份、互相过期。
+
 ---
 
 ## 能力边界
@@ -71,24 +73,33 @@ aurora/
 │   ├── embedder.py        # bge 向量化（文档不加前缀 / 查询加 BGE 前缀）
 │   ├── vector_store.py    # 手写向量库：add / search / save / load
 │   ├── rag.py             # RAG 编排：检索 → 拼上下文 → 生成
+│   ├── rewrite.py         # 多轮改写：把「那 R1 换成 20k 呢」还原成独立问题
+│   ├── session.py         # 进程内多轮状态（history 成对追加）
+│   ├── judge.py           # 评测裁判：答案判分 + 幻觉判断（结构化 LLM 调用）
 │   ├── tools.py           # 计算工具 + TOOLS schema + 执行分发 + 运放校验
 │   ├── agent.py           # function calling 调用回环 + 校验钩子
 │   ├── router.py          # 五类分流（LLM 分类，tool_choice 强制结构化）
-│   └── pipeline.py        # 编排层：Router 分流 → 五条链路分派
+│   └── pipeline.py        # 编排层：改写 → Router 分流 → 五条链路分派
+├── tests/                 # pytest：unit / integration / e2e / online 四层 + conftest 三层防线
+├── docs/                  # 架构图、代码库现状说明、testing/（测试计划·状态·缺陷）
 ├── scripts/
 │   ├── demo_companion.py  # W1 单轮示例
-│   ├── chat_loop.py       # W1 多轮对话（手动维护 history）
+│   ├── chat_loop.py       # W1 多轮对话（手动维护 history，未接 Pipeline）
 │   ├── build_index.py     # 离线建库：切块 + 卡片 → 向量化 → 落盘
 │   ├── demo_rag.py        # RAG 问答演示
 │   ├── demo_tools.py      # tool use 演示（正常计算 / 超压校验回环）
 │   ├── demo_router.py     # Router 演示（五类各一题看分流）
-│   └── eval.py            # 评测：分类准确率 + 答案正确率
+│   ├── demo_multi_turn.py # 多轮演示：同一个 Session 连跑三轮
+│   ├── eval.py            # 快速冒烟：分类准确率 + 关键词命中
+│   ├── eval_report.py     # 正式评测：多次采样 + LLM-as-judge + 幻觉/引用/延迟
+│   └── list_test_ids.py   # 测试台账：比对 TEST_PLAN 的用例 ID 与 tests/ 实现，列出缺口
 ├── knowledge/
 │   ├── formula_cards.md   # 公式卡片（8 张，教材复现）
 │   └── pages/             # 教材切页 PNG（体积大，已 gitignore）
 ├── data/
 │   ├── eval_set.json      # 评测集（12 题，覆盖 5 类）
 │   └── index/             # 向量库产物（已 gitignore，可重建）
+├── AGENTS.md              # 协作约束与已知边界（改代码前先读）
 └── .env.example / pyproject.toml / uv.lock
 ```
 
@@ -117,7 +128,10 @@ uv run scripts/demo_rag.py      # RAG 问答
 uv run scripts/demo_tools.py    # 工具调用 + 校验回环
 uv run scripts/demo_router.py   # 五类分流（推荐先跑这个，一眼看懂全局）
 
-# 5. 跑评测
+# 5. 跑离线测试（三级断网防线，不需要 API key、不加载真实模型）
+uv run pytest -q
+
+# 6. 跑评测（需要 API key）
 uv run scripts/eval.py
 ```
 
@@ -145,7 +159,9 @@ uv run scripts/eval.py
 | 分类准确率 | 12 / 12 | 类型标签字符串精确对比 |
 | 答案正确率 | 12 / 12 | 期望关键词命中（启发式） |
 
-**这两个 100% 需要打折看**：测试集是照着当前能力手写的（12 题、5 类各 2~4 题），答案判分是关键词命中，`"整流"`、`"平滑"` 这类词很容易被顺带命中。它证明的是"链路通了、没跑偏"，**不能**当成泛化能力。升级计划见 Roadmap。
+**这两个 100% 需要打折看**：测试集是照着当前能力手写的（12 题、5 类各 2~4 题），答案判分是关键词命中，`"整流"`、`"平滑"` 这类词很容易被顺带命中。它证明的是"链路通了、没跑偏"，**不能**当成泛化能力。
+
+正式评测走 `scripts/eval_report.py`：每题多次采样取多数投票，答案正确率换成 LLM-as-judge 的 `correct/partial/wrong`，另加幻觉率、引用命中率与 Pipeline 延迟。它仍有同源偏差（生成与裁判是同一个模型），但比关键词命中可信。`eval.py` 保留为「30 秒冒烟」。
 
 ---
 
@@ -166,9 +182,9 @@ LLM 做多位数乘除会出错，而且错误是"看起来合理"的——这�
 
 诚实列出来，也是下一步的待办：
 
-- **没有自动化测试**：`chunker` / `vector_store` / `tools` 都是纯函数，测试成本很低，目前为零。
-- **答案判分太松**：关键词命中容易误判为正确，需要 LLM-as-judge 二分类判分。
-- **只支持单轮**：`pipeline.run()` 不接收 `history`，学生追问"那 R1 换成 20k 呢"会断线（`ask_rag` 已支持 history，编排层没接）。
+- **测试只盖住了静态逻辑**：阶段 0/1 已落地（pytest 基础设施 + `tools`/`chunker`/`card_loader`/`vector_store`/`session`/`config`），缺口在阶段 2——Router、Rewrite、Judge、Agent 的畸形响应与失败路径，以及 E2E 和 CI，都还没做。现状以 `docs/testing/TEST_STATUS.md` 为准。
+- **答案判分是两套标准**：`eval.py` 用关键词命中（会误判），`eval_report.py` 用 LLM-as-judge（同源偏差）。都不到「能对外报准数字」的程度。
+- **多轮接了但不受控**：`run(question, store, *, session=...)` 已把 history 透传给 `run_agent()` 和 `ask_rag()`，改写层只用最近两轮；但 Session 只在进程内、历史全量进 prompt，没有窗口截断 / 摘要 / token 预算，问深了延迟和费用线性上涨。
 - **检索无相似度阈值**：永远返回 top-3，问完全无关的问题也会硬塞片段进来，是幻觉入口。
 - **Router 的置信度没用上**：`route()` 返回了 `confidence`，编排层没据此降级或反问澄清。
 - **校验器是演示级**：电源电压硬编码 `15V`，没有从题干抽取参数。
@@ -284,8 +300,11 @@ opamp 链路有唯一正确答案，「降一级提示后学生是否做对」�
 - [x] **W2 收尾 公式卡片**：教材为扫描版无法 OCR，改"切页保真图 + 读图转写"成 8 张结构化卡片，与课件块混入同一向量库
 - [x] **W3 tool use**：`calculate_expression`（ast 白名单）+ function calling 回环 + 运放电压校验回环
 - [x] **W3 Router**：LLM 分类五类分流，校验器按类型自动挂载；12 题评测集跑通
-- [ ] **W4 工程收尾**：单元测试 + LLM-as-judge 评测 + 混淆矩阵 + 日志与耗时统计
-- [ ] **W4 可演示**：Streamlit 界面 + 多轮会话
+- [x] **W4 正式评测**：`eval_report.py` 多次采样取多数 + LLM-as-judge 判分 + 幻觉率 / 引用命中率 / 延迟
+- [x] **W4 测试阶段 0/1**：离线 pytest 基础设施（客户端 / Socket / BGE 三层防线）+ 纯逻辑用例
+- [ ] **W4 测试阶段 2**：Router / Rewrite / Judge / Agent 的畸形响应与失败路径；E2E；CI 接入
+- [ ] **W4 观测**：混淆矩阵 + 日志落盘（trace / 耗时 / token 成本）
+- [ ] **W4 可演示**：Streamlit 界面 + 多轮会话（`Session` 已就绪，差的是界面与持久化）
 - [ ] **W4 对比实验**：`feature/langgraph` 分支用 LangGraph 重写同一流程，对比代码量、可调试性与延迟
 - [ ] **W5 教学闭环**：提问 → 作答 → 诊断 → 决策 → 提示 → 校验 → 回写画像 → 复习调度（设计见上一节）
 

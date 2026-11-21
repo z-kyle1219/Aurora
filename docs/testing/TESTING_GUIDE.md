@@ -1,7 +1,7 @@
 # Aurora 测试实施规范
-> 适用基线：Aurora 当前 Python 3.14、`uv`、DeepSeek OpenAI 兼容客户端、BGE Embedding 和内存 `VectorStore` 实现。
+> 适用基线：Aurora 的 Python 3.14、`uv`、DeepSeek OpenAI 兼容客户端、BGE Embedding 和内存 `VectorStore` 实现。
 > 上位设计：[`TEST_PLAN.md`](./TEST_PLAN.md)。本规范只说明如何实施，不改变其中的测试范围、优先级、用例 ID、缺陷定标方式或阶段准入标准。
-> 当前状态：本文是实施规范，不代表测试基础设施或任何测试用例已经完成，也不包含任何 `Passed` 结论。
+> 本文只描述长期实施方法与约束，不记录当前进度与执行结果；进度见 [`TEST_STATUS.md`](./TEST_STATUS.md)。
 ## 1. 适用范围与强制原则
 本规范适用于 Aurora 的 Unit、Integration、离线 E2E、在线 E2E 和 AI Evaluation。测试层级与用例范围以 `TEST_PLAN.md` 的矩阵和详细用例为准。
 所有测试实施必须遵守以下规则：
@@ -15,11 +15,11 @@
 8. `scripts/demo_*.py` 是演示，`scripts/eval.py` 和 `scripts/eval_report.py` 是在线评测入口；它们不能替代隔离的自动化测试。
 ## 2. pytest 安装、配置与运行
 ### 2.1 安装与锁定
-pytest 只作为开发依赖，由 `uv` 管理。当前 `pyproject.toml` 工作区版本已声明：
+pytest 只作为开发依赖，由 `uv` 管理。`pyproject.toml` 中声明：
 ```toml
 [dependency-groups]
 dev = [
-    "pytest>=9.2.0",
+    "pytest>=9.2.0",
 ]
 ```
 测试基础设施实施阶段应执行并提交锁文件变更：
@@ -27,17 +27,17 @@ dev = [
 uv lock
 uv sync --frozen --dev
 ```
-pytest 9.2.0 当前已安装，并已纳入开发依赖和锁文件。提交前使用 `uv lock --check` 验证 `pyproject.toml` 与 `uv.lock` 一致。
+pytest 的实际版本由 `uv.lock` 决定，`pyproject.toml` 中的声明是版本下限；具体解析到哪个版本以锁文件与 `uv run pytest --version` 为准，不在文档中固定记录。提交前使用 `uv lock --check` 验证 `pyproject.toml` 与 `uv.lock` 一致。
 ### 2.2 pytest 配置
-阶段 0 已在 `pyproject.toml` 中增加以下配置；是否有效仍以当前工作区的收集与执行记录为准：
+`pyproject.toml` 必须包含以下配置；是否生效以 `TEST_STATUS.md` 记录的执行结果为准：
 ```toml
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-m 'not online and not ai_eval and not slow'"
 markers = [
-    "online: accesses a real external API and requires explicit enablement",
-    "ai_eval: runs non-deterministic AI capability evaluation",
-    "slow: takes materially longer than the default offline suite",
+    "online: accesses a real external API and requires explicit enablement",
+    "ai_eval: runs non-deterministic AI capability evaluation",
+    "slow: takes materially longer than the default offline suite",
 ]
 ```
 不得在 `addopts` 中默认开启真实 API、真实模型或评测作业。marker 必须注册，禁止依赖未注册 marker 的警告继续运行。
@@ -59,27 +59,27 @@ uv run pytest -q -o addopts="" -m ai_eval
 ```
 选择 `online` 或 `ai_eval` 只是第一道开关。测试基础设施不会自动读取 `.env`；标记 `online` 的用例必须由执行者通过进程环境变量显式提供 `DEEPSEEK_API_KEY`。缺少凭据时应在测试入口明确失败，不能跳过、回落为伪造成功，或读取开发者本机 `.env` 密钥来满足前置条件。仅设置 API key 不得让默认套件产生在线调用。
 ## 3. 测试目录、命名与用例 ID
-实施目录遵循 `TEST_PLAN.md` 已确定的结构：
+测试目录结构固定如下，本节是目录与命名的唯一来源：
 ```text
 tests/
 ├── conftest.py
 ├── test_infra.py
 ├── fixtures/
-│   ├── vectors.py
-│   ├── llm_responses.py
-│   └── knowledge/
+│   ├── vectors.py
+│   ├── llm_responses.py
+│   └── knowledge/
 ├── unit/
-│   ├── test_tools.py
-│   ├── test_router.py
-│   └── test_<source_module>.py
+│   ├── test_tools.py
+│   ├── test_router.py
+│   └── test_<source_module>.py
 ├── integration/
-│   ├── test_pipeline_branches.py
-│   └── test_agent_tools.py
+│   ├── test_pipeline_branches.py
+│   └── test_agent_tools.py
 ├── e2e/
-│   ├── test_pipeline_offline.py
-│   └── test_multi_turn.py
+│   ├── test_pipeline_offline.py
+│   └── test_multi_turn.py
 └── online/
-    └── test_<capability>_online.py
+    └── test_<capability>_online.py
 ```
 - 测试文件统一使用 `test_<subject>.py`。Unit 文件原则上与 `src/aurora/<module>.py` 对应；跨模块文件按被验证的调用链命名。
 - 测试函数使用 `test_<test_id_lowercase>__<behavior>()`，例如 `test_tol_unit_003__keyword_arguments_take_effect()`。双下划线前是计划中的稳定 ID，后面是可读行为。
@@ -137,27 +137,27 @@ tests/
 概念接口如下，正式实现可增加类型注解，但不得削弱上述约束：
 ```python
 class ScriptedClient:
-    def __init__(self, steps):
-        self._steps = deque(steps)
-        self.calls = []
-    @property
-    def chat(self):
-        return self
-    @property
-    def completions(self):
-        return self
-    def create(self, **kwargs):
-        self.calls.append(copy.deepcopy(kwargs))
-        if not self._steps:
-            raise AssertionError("意外的额外模型调用")
-        step = self._steps.popleft()
-        if step.validator:
-            step.validator(kwargs)
-        if step.exception:
-            raise step.exception
-        return step.response
-    def assert_exhausted(self):
-        assert not self._steps, "预期的模型调用未发生"
+    def __init__(self, steps):
+        self._steps = deque(steps)
+        self.calls = []
+    @property
+    def chat(self):
+        return self
+    @property
+    def completions(self):
+        return self
+    def create(self, **kwargs):
+        self.calls.append(copy.deepcopy(kwargs))
+        if not self._steps:
+            raise AssertionError("意外的额外模型调用")
+        step = self._steps.popleft()
+        if step.validator:
+            step.validator(kwargs)
+        if step.exception:
+            raise step.exception
+        return step.response
+    def assert_exhausted(self):
+        assert not self._steps, "预期的模型调用未发生"
 ```
 ## 7. 外部依赖隔离
 ### 7.1 LLM
@@ -226,10 +226,11 @@ Aurora 当前没有关系型数据库、外部向量数据库或持久化 Sessio
 ### 12.1 xfail
 `TEST_PLAN.md` 已指定的缺陷定标使用：
 ```python
-@pytest.mark.xfail(strict=True, reason="DEF-01 关键字参数被丢弃")
+@pytest.mark.xfail(strict=True, reason="DEF-<编号> <简短原因>")
 ```
+- 上例只示形式：`reason` 必须换成真实编号。已关闭的缺陷（`DEF-01`、`DEF-02`）现在是普通通过用例，不得再把它们写进 `reason`。
 - 断言正确的目标行为，让当前已知缺陷稳定 `XFAIL`。
-- `reason` 必须包含 `DEF-xx` 和简短原因，并与缺陷登记对应。
+- `reason` 必须包含编号和简短原因：已登记缺陷写 `DEF-xx` 并与 `DEFECTS.md` 对应；决策未定的待决项写 `§13-N`，不虚构缺陷号。
 - `strict=True` 强制修复后的 `XPASS` 令套件失败，提醒删除 xfail 并关闭缺陷。
 - 不得用 xfail 包裹未知失败、偶发失败或未分析的环境问题。
 - 计划指定“现状锁定”的用例使用普通 assert，不得擅自改成 xfail。
@@ -241,35 +242,46 @@ Aurora 当前没有关系型数据库、外部向量数据库或持久化 Sessio
 - 使用 `pytest.raises(ExpectedType, match=...)` 精确断言异常类型和稳定的上下文文本。
 - 不使用 `pytest.raises(Exception)`，除非计划明确要求验证宽泛边界本身；即使如此也应额外核对回退结果和副作用。
 - 异常路径必须验证 Session、文件和调用记录没有半完成写入。
-- 对计划明确要求转换的预期异常，应精确断言转换结果和副作用；当前工具计算链中的非实数 `ValueError`、表达式 `SyntaxError` 与参数个数/类型不符的 `TypeError` 均由 `execute_tool()` 转为模型可读错误。`AttributeError` 等白名单外的未预期异常仍应严格遵循计划的缺陷定标或现状锁定决策，不擅自写成成功契约。
+- 对计划明确要求转换的预期异常，应精确断言转换结果和副作用。哪些异常会被转换、转换成什么文本，属于随实现变化的产品契约，以 `TEST_PLAN` §6.7 的用例与 `DEFECTS.md` 的定标为准，本规范不重复列举。`AttributeError` 等白名单外的未预期异常仍应严格遵循计划的缺陷定标或现状锁定决策，不擅自写成成功契约。
 ## 13. 执行、失败、缺陷与状态更新
-### 13.1 执行记录
-每次阶段验收至少记录：
-- 日期、Git revision、Python/pytest 版本和执行命令；
-- collected、passed、failed、xfailed、xpassed、skipped、deselected 数量；
-- 是否启用网络、真实 LLM、真实 BGE、索引版本和数据集版本；
-- 失败 Test ID、错误摘要和产物位置；
-- 未执行范围及原因。
+### 13.1 验收记录
+`docs/testing/runs/` 下的文件只保留两类内容：支撑判定的最小读数，以及无法重新得到的事实。
+
+- 判定：阶段或缺陷的状态，以及判定所依据的 revision 与命令；
+- 读数：该次实际结果一行，用于核对判定，不展开逐项统计；
+- 未执行范围及原因；
+- 不可复现的事实：环境限制、审计中才发现的偏差、影响证据可信度的其他事实。
+
+可由重跑、`git log`、`TEST_STATUS.md` 或测试代码本身回答的内容不写入：完整统计分解、逐条用例说明、整改过程叙事、依赖与解释器版本（由 `uv.lock` 与 `pyproject.toml` 固定）、外部资源开关（默认状态已由 §7 与 §8 固定）、覆盖率缺失原因（写在 `TEST_STATUS.md` 的「当前阻塞」）。判据是：**重现一次的成本高于记一行，才值得记**。
+
 只有本次确实被收集、执行并满足断言的用例才可标记 `Passed`。编写完成、静态阅读、上次通过、demo 成功或 pytest 未收集到用例都不能算通过。
 ### 13.2 失败处理
 1. 先确认失败可复现，并核对三层防线是否仍生效。
 2. 判断是产品缺陷、测试缺陷、基础设施缺陷、环境缺失还是概率性评测波动。
-3. 保留原始断言和失败证据；不得先放宽断言、增加 skip 或删除用例。
+3. 保留原始断言和失败证据；不得先放宽断言、增加 skip 或删除用例。可复现的失败由 `DEFECTS.md` 的复现命令承载，不可复现的部分按 §13.1 写入 run 文件的例外，不另存执行日志。
 4. 产品缺陷登记后按计划决定 `xfail(strict=True)` 或保持失败；没有计划授权不得自行定标。
 5. 测试缺陷可以修正，但必须说明为什么原断言不符合真实契约，并复核相邻用例。
 6. AI Eval 波动进入评测报告和人工复核，不应直接改动普通软件测试门槛。
 ### 13.3 缺陷登记
-下一阶段应建立 `docs/testing/DEFECTS.md`，至少包含：缺陷 ID、关联 Test ID、优先级、当前行为、目标行为、复现命令、首次发现 revision、状态、负责人/决策人和关闭证据。`xfail`的 `reason` 必须引用同一缺陷 ID。
-### 13.4 `TEST_STATUS.md`
-下一阶段应建立 `docs/testing/TEST_STATUS.md` 作为执行状态，不复制 `TEST_PLAN.md`的设计内容。每次正式执行后追加或更新：
-1. 基线与环境；
-2. 实际命令和开关；
-3. 分层/阶段结果统计；
-4. Test ID 级失败、XFAIL 和未执行项；
-5. 新增或关闭缺陷；
-6. 与上次基线的变化；
-7. 下一步和阻塞项。
-状态使用 `Planned`、`Not Executed`、`Passed`、`Failed`、`XFailed`、`Blocked` 等明确术语。不得把 marker 排除的在线测试、AI Eval 或尚未实现的用例写成 Passed。状态文档必须保留执行命令和证据，不能只写汇总百分比。
+`docs/testing/DEFECTS.md` 是缺陷状态的唯一来源，至少包含：缺陷 ID、关联 Test ID、优先级、当前行为、目标行为、复现命令、首次发现 revision、状态、负责人/决策人和关闭证据。关闭证据只写判定结果与对应 `runs/` 文件路径，不复制执行统计。`xfail` 的 `reason` 必须引用同一缺陷 ID。
+### 13.4 状态与验收记录的落点
+
+`docs/testing/TEST_STATUS.md` 只回答"现在怎样"，**覆盖更新**，不累加历史，固定写四块：
+
+1. 当前阶段：阶段 → 状态 → 依据的 `runs/` 文件；
+2. 最近一次验收：日期、revision 与对应 run 文件路径。**不写通过/失败数量，不写环境清单**；
+3. 当前阻塞；
+4. 下一步。
+
+执行读数（collected / passed / failed / xfailed / skipped / deselected、退出码、环境开关、失败 Test ID、未执行范围）只写在 `docs/testing/runs/` 的对应文件里，是该类信息的唯一来源；其他文档提到结果时只引用 `TEST_STATUS.md` 或对应 run 文件，不复制数字。
+
+每次验收按 §13.1 的保留标准写入一个新文件，一次验收一个文件，写入后不再修改；需要复核时新建文件，不改旧文件。`TEST_STATUS.md` 只保留摘要和指向该文件的路径，不复述该文件的内容，也不累计历次验收的摘要。
+
+命名：`YYYY-MM-DD-stage<N>.md`、`YYYY-MM-DD-def<NN>.md`；同一天同一维度多次验收追加时间或序号（如 `-2`、`-1430`），不使用 `rerun` 等含糊词。
+
+失败记录与通过记录同构，必须写：判定（`Failed`）、失败 Test ID、未执行范围；原因未定位时明写"未定位"，不写"待查"。
+
+状态使用 `Planned`、`Not Executed`、`Passed`、`Failed`、`XFailed`、`Blocked` 等明确术语。不得把 marker 排除的在线测试、AI Eval 或尚未实现的用例写成 Passed。
 ## 14. 软件测试与 AI Evaluation 的边界
 | 维度 | 普通软件测试 | AI Evaluation |
 |---|---|---|
@@ -280,7 +292,7 @@ Aurora 当前没有关系型数据库、外部向量数据库或持久化 Sessio
 | 执行 | 每次本地/PR 默认离线执行 | 显式、付费、手动或定时执行 |
 | 结果 | Passed/Failed/XFailed | 报告、基线、回归趋势，不冒充软件测试通过率 |
 Router 返回结构、坏 JSON 处理和请求参数属于普通测试；Router 分类准确率、macro-F1 和混淆矩阵属于 AI Evaluation。RAG 上下文格式和 query 透传属于普通测试；Recall/MRR、忠实度和引用质量属于 AI Evaluation。Agent 工具协议属于普通测试；模型是否选对工具、是否完成多步推理属于 AI Evaluation。
-`scripts/eval.py` 与 `scripts/eval_report.py` 当前会访问真实 API、加载 BGE 并读取本地索引，只能作为显式 AI Evaluation 作业。当前 12 题是 smoke seed，不是泛化质量门槛；在完成 `EVL-META-001` 和首轮可信基线前，不设置计划外百分比阈值。
+`scripts/eval.py` 与 `scripts/eval_report.py` 当前会访问真实 API、加载 BGE 并读取本地索引，只能作为显式 AI Evaluation 作业。现有题库规模只能作为 smoke seed，不是泛化质量门槛；在完成 `EVL-META-001` 和首轮可信基线前，不设置计划外百分比阈值。
 ## 15. 本地与未来 CI 命令
 ### 15.1 本地交付检查
 ```powershell
@@ -304,31 +316,8 @@ git diff --stat
 ```
 CI 使用 Python 3.14，不注入 `DEEPSEEK_API_KEY`，上传 JUnit XML 以保留 Test ID 和失败证据。阶段 1 至 4 稳定运行两周无 flaky 后再建立该阻塞门禁。
 在线冒烟和 AI Evaluation 使用独立的手动/定时 job：在线冒烟只验证五类协议和多轮 schema；AI Evaluation 记录模型名、日期、温度、采样数、数据集版本、索引 hash、延迟、token 和估算费用。它们不进入普通 PR 的默认通过条件。
-## 16. 当前差异与待确认技术决策
-### 16.1 计划与当前仓库状态差异
-1. `TEST_PLAN.md` 的审计基线记录当时 `pyproject.toml` 无 pytest、`.venv` 未安装 pytest；当前 pytest 9.2.0 已安装，并已纳入 `pyproject.toml` 与 `uv.lock`。
-2. `TEST_PLAN.md` 与 `docs/codebase-overview.md` 已区分审计时点和当前状态，不应再据历史记录判断当前没有 pytest。
-3. 当前工作区已建立 `tests/`、pytest 配置、三层离线防线、`DEFECTS.md` 和 `TEST_STATUS.md`；阶段 0 状态以 `TEST_STATUS.md` 最近一次实际执行记录为准。CI 仍未建立。
-未发现需要改变 `TEST_PLAN.md` 已确定测试范围、优先级、marker、三层防线或阶段顺序的代码冲突。计划中列出的产品行为冲突和缺陷继续按其用例与待决项处理。
-### 16.2 尚未确定的技术决策
-以下决策沿用 `TEST_PLAN.md`，本规范不代替产品决策：
-1. `store=None` 进入 RAG 分支的失败/降级契约。
-2. RAG `content=None` 的异常或降级方式，以及是否写回 Session。
-3. Agent 达 `max_rounds` 的异常或结构化状态契约。
-4. validator 如何区分中间计算与最终输出。
-5. `execute_tool()` 精度和布尔字面量规则；非实数、表达式语法错误与参数个数/类型错误（`TypeError`）的转换边界已按 TOL-UNIT-006、AGT-INT-003、DEF-01 落实；白名单外的 `AttributeError` 等仍未定契约。
-6. 全角字符清洗与索引重建/版本化策略。
-7. `Session.context()` 返回内部列表还是副本。
-8. DeepSeek 超时与重试是否成为显式项目配置。
-9. AI 裁判独立性、课件衍生评测集授权和质量回归阈值。
-这些决策应先登记到缺陷或决策记录，再更新对应目标断言。不得由测试作者通过选择“容易通过”的断言替代产品决策。
-## 17. 下一阶段基础设施清单
-阶段 0 已按 `TEST_PLAN.md` 建立以下基础设施；后续整改与验收仍不得提前编写计划外业务测试：
-1. 已完成：核对 pytest dev 依赖并更新 `uv.lock`。
-2. 增加 `[tool.pytest.ini_options]`、三个 marker 和默认过滤。
-3. 创建 `tests/conftest.py`，实现三层防线、`ScriptedClient` 工厂和响应构造器。
-4. 创建 `tests/test_infra.py`，验证 OpenAI、socket、BGE 拦截与 Fake 注入。
-5. 创建计划规定的目录和最小 fixture 数据，不复制真实课件或索引。
-6. 建立 `docs/testing/DEFECTS.md` 与 `docs/testing/TEST_STATUS.md`。
-7. 执行 `uv run pytest --collect-only -q` 和 `uv run pytest -q`；只有实际得到计划要求的成功结果后更新状态。
-8. 完成阶段 0 准入后，再按 P0 和阶段 1 至 4 的顺序实现测试；在线与 AI Evaluation 保持独立显式作业。
+## 16. 待确认的技术决策
+
+待确认的产品与技术决策见 `TEST_PLAN.md` §13，本规范不重复列表，也不代替产品决策。决策定稿后的落点遵循 `AGENTS.md` §8：写进 `README.md` 的「设计要点」或对应 commit 的 body。
+
+测试作者不得通过选择「容易通过」的断言替代产品决策；决策未定时，相关用例保持在计划登记的待决状态。

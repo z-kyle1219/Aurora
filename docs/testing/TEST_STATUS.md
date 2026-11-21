@@ -1,158 +1,27 @@
-# Aurora 测试执行状态
+# Aurora 测试状态
 
-> 状态日期：2026-11-20
->
-> 阶段：阶段 1 已定标 `Passed`（2026-11-20 复验：完整默认套件 58 节点全部通过，DEF-01 已关闭）
+> 只记录当前状态。验收记录见 `runs/`，变更历史见 `git log`。
 
-## 基线与环境
+## 当前阶段
 
-- Git revision：`876b39f04f66d0131fc31ff1888f7c7d46015f2e`（测试实施前基线）；异常处理整改相关提交：`a63bc6d`（工具错误转换）、`a652851`（AGT-INT-003 测试）
-- Python / pytest：Python 3.14.2 / pytest 9.2.0
-- 网络：禁用
-- 真实 LLM：禁用
-- 真实 BGE：禁用
-- 真实索引与课件：未读取
+| 阶段 | 状态 | 依据 |
+|---|---|---|
+| 阶段 0 测试基础设施 | `Not Executed` | 新证据基线待验收 |
+| 阶段 1 纯逻辑 P0 | `Not Executed` | 新证据基线待验收 |
+| 阶段 2 协议与编排 | `Not Executed` | 下一步 |
+| 阶段 3 及之后 | `Not Executed` | — |
 
-## 阶段 1 执行记录
+## 最近一次验收
 
-本阶段新增 16 个稳定 Test ID，对应 47 个 pytest node id；连同阶段 0 的 8 个基础设施节点，默认套件共收集 55 个节点；追加 AGT-INT-003 后为 56 个节点。所有正式执行均使用工作区 `.uv-cache`，不提供真实 API key，并由阶段 0 三层防线阻止 OpenAI、Socket 和 BGE 外部访问。由于受限沙箱无权创建 pytest 系统临时目录，两个使用 `tmp_path` 的用例先出现环境性 setup error；随后获准在沙箱外执行相同离线命令，正式结果不再包含该环境错误。
+- 尚未按当前证据规则执行。
 
-| 命令 | 退出码 | 实际结果 |
-|---|---:|---|
-| `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest --collect-only -q` | 0 | `55 tests collected in 0.03s`；Stage 1 的 16 个 Test ID 全部可追溯 |
-| `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q` | 1 | `51 passed, 3 failed, 1 xfailed in 0.33s`；无 skipped/xpassed/deselected |
-| `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -m "not online and not ai_eval and not slow" -q` | 1 | `51 passed, 3 failed, 1 xfailed in 0.27s`；结果与默认过滤一致 |
-| `uv run pytest --cov=aurora --cov-report=term-missing` | 未执行 | 当前环境未安装 `pytest-cov`，`pytest --help` 不包含 `--cov`；按任务约束未修改依赖 |
+## 当前阻塞
 
-以上 `51 passed, 3 failed, 1 xfailed` 是异常处理整改前最后一次完整默认套件结果，继续保留为历史证据，不能代表整改后的当前全套状态。
-
-## 异常处理整改定向复验
-
-- 执行时间：2026-11-19 17:21:57 +08:00（命令启动前采集）
-- 执行范围：`tests/unit/test_tools.py`、`tests/integration/test_agent_tools.py`
-- 网络 / 真实 LLM / 真实 BGE：均禁用
-- 真实索引与课件：未读取
-
-| 命令 | 退出码 | 实际结果 |
-|---|---:|---|
-| `$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q tests/unit/test_tools.py tests/integration/test_agent_tools.py` | 0 | `33 passed, 1 xfailed, 1 warning in 0.25s`；0 failed / 0 skipped / 0 xpassed |
-
-本次实际执行并通过的整改相关 Test ID：
-
-- TOL-UNIT-002：`a=1` 保留原生 `SyntaxError`，可解析但不在白名单中的 AST 抛 `ValueError`；该项确认为测试契约修正，不属于产品缺陷。
-- TOL-UNIT-006：非实数计算与语法错误均由工具边界转换为模型可读字符串，不再逃逸。
-- AGT-INT-003：真实 `run_agent → execute_tool → calculate_expression` 链将错误写入正确 tool 消息和 trace，第二轮返回最终回答并正常结束。
-- TOL-UNIT-003：仍为计划授权的 `XFailed`，DEF-01 未关闭。
-
-本次未执行完整 `uv run pytest -q`、显式 marker 全套命令或覆盖率命令，因此其他 Stage 1 Test ID 的整改后状态不得依据本次定向结果重新标记。DEF-02 已具备其全部关联验收证据并关闭，但 Stage 1 整体仍需完整套件复验后才能标记 Passed。
-
-### 复跑补充记录（含一次定向重复与一次完整套件）
-
-以上 `1 warning` 属原始记录内容，原样保留，不作修改。为补足原始记录未覆盖的完整套件状态，另执行两次复跑：
-
-| 执行时间（+08:00） | Git revision | 命令 | 退出码 | 实际结果 |
-|---|---|---|---:|---|
-| 2026-11-19 20:25:52 | `c1a8ff8` | `UV_CACHE_DIR=.uv-cache uv run pytest -q tests/unit/test_tools.py tests/integration/test_agent_tools.py` | 0 | `33 passed, 1 xfailed in 0.16s`；0 failed / 0 skipped / 0 xpassed，未再现 warning |
-| 2026-11-19 20:25:56 | `c1a8ff8` | `UV_CACHE_DIR=.uv-cache uv run pytest -q` | 0 | `55 passed, 1 xfailed in 1.05s`；收集 56 节点，0 failed / 0 skipped / 0 xpassed |
-
-复跑环境与原始记录一致：网络、真实 LLM、真实 BGE 均禁用，未读取真实索引与课件。`c1a8ff8` 相对 `a652851` 仅改动 `docs/testing/`，业务代码与测试代码未变，因此复跑结果可归因于 `a63bc6d`、`a652851` 的代码状态。
-
-这两次复跑只补齐执行证据，不改写原始结论：Stage 1 的 Test ID 定标、准入判定与阶段状态仍需人工确认后更新。
-
-整改前完整套件中的 Stage 1 Test ID 状态（历史结果）：
-
-| 状态 | 数量 | Test ID |
-|---|---:|---|
-| Passed | 13 | CFG-UNIT-001；CHK-UNIT-001/002；CRD-UNIT-001；VST-UNIT-001/002/003；VST-INT-001；SES-UNIT-001；TOL-UNIT-001/005/007/009 |
-| Failed | 2 | TOL-UNIT-002、TOL-UNIT-006（整改前完整套件历史结果；两项在整改定向复验和整改后完整套件复跑中均已通过） |
-| XFailed | 1 | TOL-UNIT-003（`strict=True`，DEF-01；当前错误返回 `"3"`，目标为 `"3.14"`） |
-| Blocked / Not Executed | 0 | 无 |
-
-节点统计与 Test ID 统计不可混用：Stage 1 的 47 个节点中 43 passed、3 failed、1 xfailed；全套 55 个节点中 51 passed、3 failed、1 xfailed。阶段 1 未达到“全部 passed 或计划授权 xfailed”的准入条件。
-
-覆盖率：`Not Available`。原因是当前项目未声明或安装 `pytest-cov`，本轮按要求未擅自新增依赖，不能提供或推测覆盖率百分比。
-
-整改前计划核对曾发现两处事实问题：
-
-1. TOL-UNIT-001 中 `3**4+sqrt(2)*sqrt(8)` 的手算结果是 `85.0`，计划写为 `97.0`；测试按数学正确值断言。
-2. TOL-UNIT-002 曾将 `a=1` 列为应抛 `ValueError`，但实际 `ast.parse(..., mode="eval")` 抛 `SyntaxError`；该测试契约已在本次定向复验前修正并通过。
-
-## 阶段 0 执行记录
-
-执行环境使用工作区 `.uv-cache` 作为 `UV_CACHE_DIR`，并从验收命令环境移除 `DEEPSEEK_API_KEY`。测试启动时先固定 `stage-0-dummy-key`，再在受控窗口导入 `config.py` 并拦截 `load_dotenv()`；启动断言和 `INF-UNIT-008` 会在导入顺序或屏蔽失效时失败。未启用任何在线、模型或评测开关，未读取或使用真实 API Key。
-
-| 命令 | 退出码 | 实际结果 |
-|---|---:|---|
-| `Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue; uv run pytest --collect-only -q` | 0 | 收集 `INF-UNIT-001` 至 `INF-UNIT-008` 对应的 8 个 node id；`8 tests collected in 0.01s` |
-| `Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue; uv run pytest -q` | 0 | `8 passed in 0.02s`；审计复跑未再出现 warning |
-| `git diff --check` | 0 | 未发现空白错误；输出 `docs/codebase-overview.md` 的 LF→CRLF warning |
-| `git status --short` | 0 | `M`：`docs/codebase-overview.md`、`docs/testing/TESTING_GUIDE.md`、`docs/testing/TEST_PLAN.md`、`pyproject.toml`；`??`：`docs/testing/DEFECTS.md`、`docs/testing/TEST_STATUS.md`、`tests/` |
-
-警告：pytest 曾在当前 Windows 工作区更新 `.pytest_cache` 时报告 `PytestCacheWarning` 和 `WinError 183`，属缓存状态的偶发现象；审计复跑 4 次均未复现，且从未影响用例收集、执行或退出码，也没有通过禁用插件、`skip`、`xfail` 或降低断言规避。`git diff --check` 另提示 `docs/codebase-overview.md` 下次由 Git 处理时可能从 LF 转为 CRLF，但退出码为 0，未发现空白错误。
-
-整改过程记录：首次将隔离逻辑迁移到 `pytest_configure` 时，hook 参数误命名为 `pytest_config`，导致 `--collect-only` 和默认套件均在插件校验阶段退出码 1，未收集或执行用例，也未触发外部访问。修正为 pytest 规定的 `config` 参数后，以上表格中的正式复验全部通过。
-
-阶段 0 自检取得以下独立证据：
-
-- `INF-UNIT-001`：测试内 monkeypatch dummy key 后调用 `aurora.config.get_client()`，命中 OpenAI 构造哨兵并抛出 `OfflineProtectionError`；网络尝试记录为空。
-- `INF-UNIT-002`：用受控 OpenAI 构造探针让 `aurora.config.get_client()` 进入 `socket.create_connection()`，命中 socket 哨兵并抛出 `OfflineProtectionError`；构造参数只含 dummy key 和项目 base URL。
-- `INF-UNIT-003`：调用 `aurora.embedder.encode_query("probe")`，在模型构造或下载前命中 BGE 哨兵并抛出 `OfflineProtectionError`。
-- `INF-UNIT-004`：实际请求 `tiny_vector_data` Fixture，成功生成 `float32` 的 `(3, 2)` 向量及字段符合真实 `Chunk(text, source, heading)` 定义的合成知识。
-- `INF-UNIT-005`：在实际使用方 `aurora.router.get_client` 注入 `ScriptedClient`，验证响应、调用次数、消息、`model`、`temperature`、`tools` 和 `tool_choice`；脚本队列完全消费。
-- `INF-UNIT-006`：直接调用业务模块已绑定的 `router.get_client()`，确认它与 `config.get_client` 是同一引用并仍命中 `config.OpenAI` 哨兵。
-- `INF-UNIT-007`：对保留测试地址调用 `socket.socket.connect()`，确认该入口独立命中 socket 哨兵；socket 同时设置 1 秒超时作为失效兜底。
-- `INF-UNIT-008`：断言进程测试环境和 `config.DEEPSEEK_API_KEY` 都是 dummy key，且受控导入期间 `load_dotenv()` 拦截恰好发生一次。
-
-## DEF-01 整改与复验
-
-- 整改日期：2026-11-20
-- 契约变更：`_eval_node()` 遇到 `ast.Call.keywords` 时抛 `ValueError`，由 `execute_tool()` 转为 `计算失败：不支持关键字参数…`；位置参数 `round(3.14159, 2)` 仍返回 `"3.14"`。不再出现静默丢弃后返回 `"3"` 的错值路径。
-- 连带变更：`execute_tool()` 增加 `TypeError` 捕获，`sqrt()` 这类参数个数/类型错误不再穿出 `run_agent()`。
-- 测试变更：TOL-UNIT-003 去掉 `xfail(strict=True)`，改为「关键字参数显式拒绝 + 位置参数正确」两条断言；TOL-UNIT-006 增加 `wrong-arity` 参数节点。
-- 复验命令：`$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q`
-- 复验结果：2026-11-20，退出码 0，`58 passed in 0.28s`；0 failed / 0 skipped / 0 xfailed，与预期节点数一致（原 56 节点 + TOL-UNIT-003 拆出 1 + TOL-UNIT-006 新增 1）。
-- 定标：DEF-01 改为 `Closed`；阶段 1 不再保留任何授权 xfail。
-
-## TOL-UNIT-010 加固与复验
-
-- 代码：`MAX_EXPRESSION_LENGTH=300`（解析前检查）、`MAX_EXPONENT=1000` 与 `MAX_RESULT_BITS=100000`（`_eval_pow()` 中按底数位数×指数估算结果规模）。超限都经 `execute_tool()` 转为 `计算失败：…`。
-- 测试：`test_tol_unit_010__rejects_resource_exhausting_expressions`（子进程 + 20s 超时，4 个参数节点，标 `slow`）与 `test_tol_unit_010__keeps_ordinary_powers_working`（2 个参数节点，防误伤，进默认套件）。
-- 复验命令：`$env:UV_CACHE_DIR='.uv-cache'; uv run pytest -q -o addopts="" -m slow tests/unit/test_tools.py`
-- 复验结果：2026-11-20，退出码 0，`4 passed, 37 deselected in 0.27s`；同期默认套件 `60 passed, 4 deselected in 0.40s`。
-- 状态：`Passed`。
-
-## 范围状态
-
-- 阶段 0：`Passed`（8 collected / 8 passed / 0 failed / 0 skipped / 0 xfailed / 0 deselected）
-- 阶段 1：`Passed`（2026-11-20 完整默认套件 58 节点全部 passed，0 failed / 0 skipped / 0 xfailed，退出码 0；DEF-01 已关闭，无授权 xfail）
-- 阶段 2 及之后：除 AGT-INT-003 为验证 DEF-02 而完成定向执行外，其余均为 `Not Executed`
-- `online` / `ai_eval`：`Not Executed`，默认 marker 过滤；`slow`：TOL-UNIT-010 已执行（2026-11-20，4 passed），其余 slow 用例未执行
-
-## 缺陷与阻塞
-
-- 新增缺陷：DEF-01、DEF-02
-- 关闭缺陷：DEF-02（TOL-UNIT-006、AGT-INT-003 定向复验通过）；DEF-01（2026-11-20 完整默认套件 58 passed）
-- 阻塞项：`pytest-cov` 未安装，无法生成覆盖率；阶段 1 定标已不再阻塞
-
-## 与上次基线的变化
-
-- 建立 pytest marker 与默认离线过滤。
-- 建立 OpenAI 客户端、socket 网络和 BGE 模型加载三层防线。
-- 建立严格脚本 Fake、响应构造器、微型向量与合成知识数据。
-- 建立阶段 0 自检及缺陷、执行状态文档。
-- 根据独立审计拆分三层防线自检，修正 `Chunk` Fixture，消除本机 `.env`/真实 key 依赖，并登记稳定 Test ID。
-- 增加 `socket.socket.connect`、业务模块绑定引用与 dotenv 导入顺序回归保护；删除未使用的 `MALFORMED_ARGUMENTS`。
-- 2026-11-20：修复 DEF-01（关键字参数显式拒绝 + `TypeError` 转换），TOL-UNIT-003 去掉 xfail，TOL-UNIT-006 增加参数节点。
-- 2026-11-20：完整默认套件 `58 passed`，阶段 1 定标 `Passed`；DEF-01、DEF-02 记录补齐决策人与关闭证据。
-- 2026-11-20：工具加表达式长度/指数/结果规模上限，新增 TOL-UNIT-010（4 个 slow 节点 + 2 个默认节点）；默认套件 `60 passed, 4 deselected`，slow `4 passed`。
+- `pytest-cov` 未安装，覆盖率不可用
+- 未关闭缺陷见 `DEFECTS.md`，按其「状态」列判断
+- 阶段 0/1 需基于本次文档基线重新验收
 
 ## 下一步
 
-核对 Stage 1 全部 Test ID 在整改后的状态，并确认是否把阶段 1 标记为 Passed：整改后完整默认离线套件已于 2026-11-19 20:25:56 复跑（`55 passed, 1 xfailed`，56 节点，退出码 0），该次执行只补执行证据，未自行改写阶段状态。资源边界 TOL-UNIT-010 未执行且不属于本次整改记录。
-
-2026-11-20 更新后的待办顺序：
-
-1. ~~执行完整默认套件，确认 58 节点全部 passed、0 xfailed；据此把 DEF-01 改为 `Closed`。~~ 已完成（`58 passed in 0.28s`）。
-2. ~~以该次输出为准，对 Stage 1 做最终定标。~~ 已完成（`Passed`）。
-3. 进入阶段 2（Router / Rewrite / Judge / Agent 畸形响应与失败路径）。
-4. ~~在做 Web/API 入口之前执行 TOL-UNIT-010 的 `slow` 用例~~ 已完成（`4 passed, 37 deselected`）；上限已生效，阶段 1 收口。
+1. 重新验收阶段 0/1 并建立首份可追溯 run
+2. 阶段 2：Router / Rewrite / Judge / Agent 的畸形响应与失败路径

@@ -10,7 +10,7 @@
 
 本文档是静态分析结果，不代表外部模型调用、索引重建或评测已经在当前环境中执行成功。
 
-核对基线：commit `cf01520`（2026-11-18）。
+核对基线：commit `6033b13`（2026-11-20）+ 未提交工作区改动（2026-11-21）。本次复核第 7.2 节（安全执行）、第 11 节（异常处理）与第 12 节（测试现状）；其余章节仍为 `cf01520`（2026-11-18）时点的静态分析结果。
 
 ## 1. 项目定位
 
@@ -232,9 +232,9 @@ standalone query
 
 以下输入会被拒绝：属性访问、下标、列表和字典、任意函数名、变量赋值及其他未显式允许的 AST 节点。
 
-`execute_tool()` 负责名称分派、参数检查和部分异常转换。`ValueError`、`ZeroDivisionError`、`OverflowError` 和 `SyntaxError` 会转换成字符串结果，再交还模型处理。`calculate_expression()` 在结果为复数（如 `(-8)**(1/3)`）时抛出 `ValueError("计算结果不是实数")`，因此不再出现 `float(complex)` 的 `TypeError`；其他未预期的 `TypeError` 仍会向上抛出并中断 Pipeline。`ast.parse()` 产生的 `SyntaxError` 由 `execute_tool()` 转换为固定的 `"计算失败：表达式语法错误"`。
+`execute_tool()` 负责名称分派、参数检查和异常转换。`ValueError`、`ZeroDivisionError`、`OverflowError`、`SyntaxError` 与 `TypeError` 都会转成 `计算失败：…` 字符串交还模型处理，不再穿出工具边界：复数结果 → `计算结果不是实数`，`ast.parse()` 语法错误 → `表达式语法错误`，参数个数或类型不匹配（如 `sqrt()` 少传参数）→ `参数不匹配，请检查函数参数个数与类型`。因此工具层的预期错误不会中断 Pipeline（DEF-02，已关闭）。
 
-`_eval_node()` 执行函数调用时只处理 `node.args`，没有检查或传递 `node.keywords`。关键字参数因此会被静默丢弃，可能产生错误数值。例如 `round(3.14159, ndigits=2)` 实际按 `round(3.14159)` 执行，结果为 `3.0`。
+`_eval_node()` 执行函数调用时只读取 `node.args`。`node.keywords` 非空时显式抛出 `ValueError("不支持关键字参数，请改用位置参数，例如 round(3.14159, 2)")`，不静默丢弃——静默丢弃会让 `round(3.14159, ndigits=2)` 退化成 `round(3.14159)` 并返回 `3`，算出错误数值且无任何提示。工具 schema 的 `description` 同步声明「只支持位置写法」，让模型第一次就传对（DEF-01，已关闭）。
 
 ### 7.3 Agent 回环
 
@@ -342,7 +342,7 @@ class Session:
 - `config.py`：缺少 key 时主动失败。
 - `router.py`：无 tool call、JSON 解析失败和非法标签时回退到 `concept`。
 - `agent.py`：非法工具 JSON 按空参数执行；模型输出被截断或为空时抛出 `RuntimeError`。
-- `tools.py`：将 `ValueError`、`ZeroDivisionError`、`OverflowError` 和 `SyntaxError` 转换为可返回给模型的错误字符串；复数结果按 `ValueError` 处理，其他 `TypeError` 仍会向上抛出。
+- `tools.py`：将 `ValueError`、`ZeroDivisionError`、`OverflowError`、`SyntaxError` 与 `TypeError` 统一转换为可返回给模型的 `计算失败：…` 字符串；复数结果、关键字参数、超长表达式与超限幂运算均以 `ValueError` 拒绝，`TypeError`（参数不匹配）不会穿出工具边界。
 - `rewrite.py`：异常、空结果或超过 500 字时回退原问题；正常结果会剥离首尾空白和引号。
 - `rag.py`：空索引时返回提示文本。
 - `judge.py`：结构化参数无法解析时返回默认评测结果。
@@ -355,7 +355,7 @@ class Session:
 
 ## 12. 测试与评测现状
 
-仓库已建立 pytest 阶段 0 基础设施：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据及基础设施自检。pytest 9.2.0 已作为开发依赖安装并锁定；阶段 1 及之后的业务单元、集成和 E2E 测试以及 CI 仍未建立。执行证据以 `docs/testing/TEST_STATUS.md` 为准。
+仓库已建立 pytest 阶段 0 基础设施与阶段 1 纯逻辑用例：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及 `tools` / `chunker` / `card_loader` / `vector_store` / `session` / `config` 的单元与集成用例。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；阶段 2 及之后的协议、编排与 E2E 用例以及 CI 仍未建立。执行证据以 `docs/testing/TEST_STATUS.md` 为准。
 
 ### 12.1 快速评测
 
@@ -383,12 +383,7 @@ class Session:
 
 ### 12.3 当前测试结论
 
-- 基础设施自检：**已实现**。
-- 业务单元测试：**未实现**。
-- 模块集成测试：**未实现**。
-- CI 自动执行：**未实现**。
-- 在线脚本评测：**已实现**。
-- 当前测试通过率：**未知**，本文档生成过程中没有执行外部模型评测。
+测试覆盖与执行结果以 `docs/testing/TEST_STATUS.md` 为准，覆盖缺口见 `docs/testing/TEST_PLAN.md` §10。本文不复述通过数量或具体执行结果，避免与状态文档重复维护。
 
 ## 13. 已知技术债务与风险
 
@@ -446,6 +441,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - 多轮问题改写。
 - 固定降级回答。
 - 脚本式分类、答案、幻觉、引用和延迟评测。
+- 阶段 0/1 离线 pytest 套件（节点数量与结果见 `docs/testing/TEST_STATUS.md`）。
 
 ### 未实现
 
@@ -454,7 +450,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - Session 持久化、隔离和并发管理。
 - 日志、监控、统一异常响应和调用重试。
 - 相似度阈值、混合检索和 rerank。
-- 自动化单元测试、集成测试和 CI。
+- CI 自动执行；阶段 2 之后的协议、编排与 E2E 用例。
 - 通用工具注册、外部工具和并行工具执行。
 
 ### 未知
