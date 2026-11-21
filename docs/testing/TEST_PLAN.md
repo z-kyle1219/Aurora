@@ -58,17 +58,11 @@
 ### 3.1 分支与外部调用次数（首轮 / 有历史时）
 
 | 分支 | 处理 | 首轮 LLM 调用 | 多轮 LLM 调用 | `trace` | `hits` |
-
 |---|---|---|---|---|---|
-
 | `opamp` | Tool Agent + 电压校验 | 1 + N（N≥1，上限 5） | 2 + N | `list` | `None` |
-
 | `feedback` | RAG + 决策树提示词 | 2 | 3 | `None` | `list` |
-
 | `power` | RAG + 链式流程提示词 | 2 | 3 | `None` | `list` |
-
 | `concept` | RAG + 默认提示词 | 2 | 3 | `None` | `list` |
-
 | `fallback` | 模板文案 | 1 | 2 | `None` | `None` |
 
 （"2"= Router + 生成；多轮多一次改写。`opamp` 的改写结果只被 Router 消费，属纯开销。）
@@ -92,15 +86,10 @@
 ### 4.1 四个层级（Aurora 版定义）
 
 | 层级 | 判定标准 | 允许的 Mock | 默认是否联网 |
-
 |---|---|---|---|
-
 | Unit | 只测一个模块内的函数/类；不跨模块 | 全部外部依赖 | 否 |
-
 | Integration | 至少跨 2 个真实模块，被验证的协作边界保持真实 | 仅模型/网络边界 | 否 |
-
 | E2E | 从 `pipeline.run()` 入参到统一 dict + Session 写回 | 仅模型边界；Pipeline/Session/tools/VectorStore 全真 | 离线 E2E 否，在线 E2E 是 |
-
 | AI Eval | 用固定数据集算聚合指标 | 不 Mock | 是（独立作业） |
 
 关键区分：**软件测试断言"行为契约"，AI 评估断言"质量分布"**。Router 解析结构是 Unit，Router 分类准不准是 AI Eval；两者的失败处置完全不同（前者阻塞合并，后者只出报告）。
@@ -144,11 +133,8 @@
 P0 里有若干用例，其"当前行为"本身就是缺陷（`content=None` 被写回、轮数耗尽被当成功、负 `k` 切片丢最低分……）。这类用例必须二选一，不能含糊，否则要么把 bug 锁死，要么让阶段准入永远红：
 
 | 类型 | 断言什么 | pytest 写法 | 适用用例 |
-
 |---|---|---|---|
-
 | **A. 缺陷定标** | 断言**正确行为**（缺陷存在时必然失败） | `@pytest.mark.xfail(strict=True, reason="DEF-xx 缺陷描述")` | RTR-UNIT-005、RTR-UNIT-006、RAG-INT-004、RAG-INT-005、PIP-INT-005 |
-
 | **B. 现状锁定** | 断言**当前行为**（含错误值），并注明修复时同步改断言 | 普通 `assert` + `# 修复 DEF-xx 后改此断言` | TOL-UNIT-004（`:g` 精度）、VST-UNIT-002（负 k）、CHK-UNIT-001（全角清洗）、SES-UNIT-002（返回内部 list） |
 
 不用 `skip` 的理由：`skip` 会让缺陷永久沉默；`xfail(strict=True)` 在缺陷修复后转为 `XPASS` 并**直接报错**，强制作者回来删标记，缺陷不会在修复后继续"假装红着"。
@@ -168,37 +154,21 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 图例：`✓` 必须覆盖；`△` 少量/间接覆盖；`—` 不适用。
 
 | Module | Unit | Integration | E2E | AI Evaluation | 理由 |
-
 |---|:--:|:--:|:--:|:--:|---|
-
 | `config` | ✓ | ✓ | △ | — | 只验证配置失败与客户端构造参数，无"能力"可评 |
-
 | `rewrite` | ✓ | ✓ | △ | ✓ | 门控/截断/回退可确定；指代消解质量必须用数据集 |
-
 | `router` | ✓ | ✓ | ✓ | ✓ | 解析与兜底确定；五类准确率/混淆矩阵是核心 AI 指标 |
-
 | `chunker` | ✓ | ✓ | — | △ | 纯文本处理；"切块策略影响检索"属实验性评估 |
-
 | `card_loader` | ✓ | ✓ | — | — | 纯解析，无模型参与 |
-
 | `embedder` | ✓ | △ | — | ✓ | 调用契约可 Mock；语义质量归入检索评估 |
-
 | `vector_store` | ✓ | ✓ | △ | △ | 排序/持久化确定；召回率用标注集衡量 |
-
 | `rag`（在线链） | ✓ | ✓ | ✓ | ✓ | 上下文契约 + 忠实度/引用率都重要 |
-
 | `tools` | ✓ | ✓ | △ | ✓ | 安全边界是 P0；"模型是否会正确调工具"属评估 |
-
 | `agent`（回环） | ✓ | ✓ | ✓ | ✓ | 协议确定；工具选择与多步推理概率性 |
-
 | `pipeline` | ✓ | ✓ | ✓ | △ | 编排本身不单独设 AI 分数，指标归各能力 |
-
 | `session` / 多轮 | ✓ | ✓ | ✓ | ✓ | 状态正确性与上下文理解必须分开测 |
-
 | `judge` / `eval*.py` | ✓ | ✓ | — | ✓（元评估） | 评测器自身可靠性需人工对齐 |
-
 | `companion_v0` | △ | — | △ | — | 旧入口，只做冒烟，不投测试预算 |
-
 | `build_index.py` | — | ✓ | — | — | 只验证可控语料下的流程与落盘 |
 
 **不套用示例的原因**：`chunker` / `card_loader` / `vector_store` 没有"AI 能力"可评，给它们 AI Eval 只会制造无意义指标；`pipeline` 的 E2E 是**唯一**能同时验证"改写→路由→分支→写回"的层级，因此标 `✓` 而非 `—`。
@@ -214,269 +184,159 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 ### 6.1 配置层 `config.py`
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | CFG-UNIT-001 | config | Unit | 缺 key 时明确失败 | `monkeypatch` 置 `DEEPSEEK_API_KEY=None` | 抛 `RuntimeError`，消息含 `.env` 指引；不构造客户端 | 无 | patch 模块常量，不读真实 `.env` | P0 |
-
 | CFG-UNIT-002 | config | Unit | 客户端构造参数 | 固定 key / base_url / model | `OpenAI` 收到 `api_key` 与 `base_url`；两次 `get_client()` 返回不同实例（当前不复用） | openai SDK | patch `aurora.config.OpenAI` 为记录参数的替身 | P1 |
-
 | CFG-UNIT-003 | config | Unit | 项目未显式配置超时与重试 | `get_client()`，不传任何超时/重试参数 | 构造 `OpenAI` 的 kwargs 只有 `api_key` 与 `base_url`，不含 `timeout`/`max_retries`——即项目未覆盖 SDK 默认；具体继承值不写死在本行；需要数值核对时现场构造观测，不写入档案 | openai SDK（版本由 `uv.lock` 决定） | patch `aurora.config.OpenAI` 为记录 kwargs 的替身，断言 kwargs 不含 `timeout`/`max_retries` | P1 |
 
 ### 6.2 上下文改写 `rewrite.py`
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | RWT-UNIT-001 | rewrite | Unit | 首轮零成本门控 | `history=None` / `[]` | 原样返回；`get_client` **未被调用**（用会抛异常的哨兵验证） | 无 | 不 patch，用哨兵 | P0 |
-
 | RWT-UNIT-002 | rewrite | Unit | 历史窗口与截断 | 5 轮共 10 条；某条 400 字；role 为 `system` | 只取最后 4 条；长文本截到 300 字 + `…`；非 `user` 显示"Aurora"；换行被压成空格 | 无 | 直接测 `_format_history` | P1 |
-
 | RWT-UNIT-003 | rewrite | Unit | 异常与异常输出回退 | ①`get_client` 抛 `RuntimeError` ②`content=None` ③`content=""` ④`content` 501 字 ⑤正常 20 字带引号 | ①②③④ 返回原问题且不抛异常；⑤ 去掉首尾空白与中英文引号 | 无 | patch `aurora.rewrite.get_client` | P0 |
-
 | RWT-UNIT-004 | rewrite | Unit | "只有说话人标签"的历史 | `history=[{"role":"x","content":None}]` → `_format_history` 产出 `"Aurora："`（非空字符串、无正文） | 现状：字符串非空 → **仍会调用模型**。需先定义"有效历史文本"= 至少一条正文非空，否则直接返回原问题 | 无 | fake + 调用计数 | P2 |
-
 | RWT-INT-001 | rewrite→pipeline | Integration | 改写只污染查询侧 | 伪造 standalone 与原问题不同 | `route` 与 `ask_rag(query=)` 收到 standalone；`run_agent` 的 question、`ask_rag(question=)`、`add_turn` 收到原话 | pipeline | patch `route/run_agent/ask_rag`，捕获实参 | P0 |
-
 | RWT-AI-001 | rewrite | AI Eval | 指代消解与数值保真 | 数据集：代词、省略、参数替换、"换话题" | 报告 exact/semantic accuracy、数值与单位保真率、错误改写率；失败样本人工复核 | 真实 LLM | 不 Mock，独立付费作业 | P1 |
 
 ### 6.3 Router `router.py`
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | RTR-UNIT-001 | router | Unit | 合法结构化输出 | tool_call 参数 `{"circuit_type":"opamp","confidence":0.9,"reason":"求 uo"}` | 返回三字段；`confidence` 为 `float`；`reason` 原样 | 无 | patch `aurora.router.get_client` | P0 |
-
 | RTR-UNIT-002 | router | Unit | 无 tool_call 兜底 | `message.tool_calls=[]` 或 `None` | `{"circuit_type":"concept","confidence":0.0,"reason":"Router 未返回有效分类"}` | 无 | fake | P0 |
-
 | RTR-UNIT-003 | router | Unit | 坏 JSON 兜底 | `arguments="{oops"` | `concept / 0.0 / "分类参数解析失败"` | 无 | fake | P0 |
-
 | RTR-UNIT-004 | router | Unit | 非法枚举 | `circuit_type="unknown"`；缺失该字段 | 均回退 `concept`；缺失时 `reason` 仍保留 | 无 | fake（两份响应参数化） | P0 |
-
 | RTR-UNIT-005 | router | Unit | 非 dict JSON 暴露类型契约 | `arguments="[]"` / `"\"opamp\""` / `"null"` | 现状：`args.get` 抛 `AttributeError`，Router 不兜底 → 中断 Pipeline。目标：与其他坏输出一致回退 | 无 | fake | P0 |
-
 | RTR-UNIT-006 | router | Unit | `confidence` 类型契约 | `"high"` / `null` / `2.5` / `-1` / 缺失 | 现状：`"high"`→`ValueError`；`null`→`TypeError`；`2.5`/`-1` 不钳位；缺失→`0.0`。修复后应统一为"非数值回退 0.0 + 钳位到 [0,1]" | 无 | fake（5 份响应参数化） | P0 |
-
 | RTR-UNIT-007 | router | Unit | 请求参数契约 | 任意问题 | `tool_choice` 强制 `route_circuit`；`temperature=0.0`；`tools=[ROUTE_TOOL]`；system 消息含五类说明 | 无 | fake 记录 kwargs | P2 |
-
 | RTR-INT-001 | router→pipeline | Integration | 分类结果驱动分支 | 五类固定 Router 输出 | 只调用对应能力：`opamp`→`run_agent`；`feedback/power`→`ask_rag` 且 `system_prompt` 分别为 `FEEDBACK_PROMPT`/`POWER_PROMPT`；`concept`→`system_prompt is None`；`fallback`→不调用任何能力 | pipeline | patch `aurora.pipeline.route` 与三个能力函数 | P0 |
-
 | RTR-E2E-001 | router | E2E | 分类→分支→返回字段一致 | 五类问题各一（fake LLM 按脚本回复） | 返回 dict 七字段齐全；`circuit_type` 与分支产物匹配（`trace`/`hits` 互斥且正确） | 全部 | 离线 fake | P0 |
-
 | RTR-AI-001 | router | AI Eval | 五类分类质量与混淆 | 分层标注集（同义改写/边界/超纲），≥150 题 | 报告 accuracy、macro-F1、每类 recall、混淆矩阵、置信度校准（ECE） | 真实 DeepSeek | 不 Mock；≥3 次采样取多数 | P0 |
-
 | RTR-AI-002 | router | AI Eval | 标签定义一致性 | 人工构造"跨类"问题（如"负反馈对运放输出有什么影响"） | 明确该归 `feedback` 还是 `opamp`，形成判定规范；统计"规范歧义题"占比并单列 | 标注规范 | 双人标注 | P2 |
 
 ### 6.4 知识入库数据层 `chunker.py` / `card_loader.py` / `embedder.py`
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | CHK-UNIT-001 | chunker | Unit | 私有区与全角字符清洗 | `"输出＝１５Ｖ，正常"`、含 PUA 码点行、含 `\|` 表格行 | 清洗为 `"输出正常"`（全角 `＝１５Ｖ` 因 ≥U+E000 被删，**已知数据损失**）；`\|` 变空格；纯符号行被丢弃 | 无 | 无 | P0 |
-
 | CHK-UNIT-002 | chunker | Unit | 可读性与占位过滤 | 纯英文行、纯公式行、含"请替换文字"的行、含任意一个汉字的行 | 前 3 类被丢弃；含汉字行保留 | 无 | 无 | P0 |
-
 | CHK-UNIT-003 | chunker | Unit | 标题识别与继承 | `"1 集成运算放大器"`、`"１.2 标题"`（全角数字）、`"2026 年考试"` | ASCII 数字开头且 ≤30 字 → 成为 heading 且不进正文；全角数字被清洗成 `".2 标题"` → **不识别为标题**，heading 为空串；误判为标题的行不进正文 | 无 | 无 | P1 |
-
 | CHK-UNIT-004 | chunker | Unit | 600 字封口与残段 | 多段正文累计跨过阈值；末尾不足阈值 | 达到阈值即 `flush`；末段 `flush`；chunk 的 `source` 为文件名、`heading` 为最近标题；注意阈值按"无空格拼接长度"计算，实际 text 略长 | 无 | 无 | P1 |
-
 | CHK-UNIT-005 | chunker | Unit | 编码与异常 | 非 UTF-8 文件；不存在的路径 | `chunk_file` 抛 `UnicodeDecodeError` / `FileNotFoundError`，不静默返回空列表 | 文件系统 | `tmp_path` | P2 |
-
 | CRD-UNIT-001 | card_loader | Unit | 多卡解析 | 含前言、3 张 `##` 卡、字段行、空行的 md | 3 个 `Chunk`；`text` 以"标题。"开头并拼接字段；`source="公式卡片：<标题>"`；`heading=标题` | 文件系统 | `tmp_path` 写临时 md | P0 |
-
 | CRD-UNIT-002 | card_loader | Unit | 空卡与异常结构 | 只有标题无正文；连续两个 `##`；`#` 一级标题 | 空卡仍生成 Chunk（text 仅标题）；一级标题不参与解析；不抛异常 | 文件系统 | `tmp_path` | P1 |
-
 | EMB-UNIT-001 | embedder | Unit | 查询/文档调用契约 | 一批 passages + 单条 query | passages **不加**前缀、`normalize_embeddings=True`、`show_progress_bar=False`、`convert_to_numpy=True`；query **加** `QUERY_INSTRUCTION`；两者 `dtype=float32` | sentence-transformers | patch `aurora.embedder.get_model` 为记录入参的假模型 | P0 |
-
 | EMB-UNIT-002 | embedder | Unit | 形状与缓存 | 3 条文本；连续两次 `get_model()` | 返回 `(3, D)`；`get_model` 走 `lru_cache` 只加载一次；用例前后 `cache_clear()` | 无 | 同上 | P1 |
 
 ### 6.5 向量库 `vector_store.py`
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | VST-UNIT-001 | vector_store | Unit | top-k 排序正确 | 3 个二维单位向量 + 查询 `[1,0]` | 分数降序；`score` 与手算点积一致；返回 `SearchResult` | NumPy | 无 | P0 |
-
 | VST-UNIT-002 | vector_store | Unit | k 的边界 | `k=1`、`k=3`、`k=5`（>N）、`k=0`、`k=-1` | `1/3/3/[]`；`k=-1` 返回 `[第1,第3]`（切片 `[:-1]` 丢最低分）→ 作为当前语义固定，修复时改显式校验 | NumPy | 无 | P0 |
-
 | VST-UNIT-003 | vector_store | Unit | 空库与 `None` 向量 | `VectorStore()`；`vectors=None` | 返回 `[]`，不抛异常 | NumPy | 无 | P0 |
-
 | VST-UNIT-004 | vector_store | Unit | 形状/数量不一致 | query 维度 ≠ 向量维度；`len(chunks) != len(vectors)` | 前者 `ValueError`；后者当前**不报错**，按位置取会导致错配 → 记录为契约缺陷 | NumPy | 无 | P1 |
-
 | VST-INT-001 | vector_store | Integration | 保存/加载往返 | 2 个 Chunk + 固定矩阵 → `tmp_path` → `load` | 文本、`source`、`heading`、顺序、dtype、检索结果全等；不触碰 `data/index/` | 文件系统 | `tmp_path` | P0 |
-
 | VST-INT-002 | vector_store | Integration | 坏持久化输入 | 缺 `vectors.npy`；`chunks.json` 非法；两者数量不匹配 | 前两者抛 `FileNotFoundError` / `JSONDecodeError`；第三者当前可加载成功 → 需在加载时校验 | 文件系统 | `tmp_path` | P1 |
-
 | VST-INT-003 | vector_store | Integration | `add()` 契约 | 空库 `add` 两次；有 `vectors=None` 时 `add` | 向量 `vstack` 后形状 `(2,D)`；`len(store)==2`；注意 `add` 目前**无调用方**，仅锁定行为 | NumPy | 无 | P2 |
 
 ### 6.6 RAG 在线链 `rag.py`
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | RAG-UNIT-001 | rag | Unit | 上下文拼接格式 | 2 个 `SearchResult`（source A/B） | 编号从 1 起、含"（来源：X）"、顺序与 hits 一致、正文完整无截断 | 无 | 无 | P0 |
-
 | RAG-UNIT-002 | rag | Unit | 空 hits 文案 | `build_context([])` | 返回 `""`；`ask_rag` 在空 hits 时返回"课件库还是空的…"且**不调用** `get_client` | 无 | 哨兵 client | P0 |
-
 | RAG-INT-001 | rag | Integration | query 与生成输入隔离 | `question="那 R1 换成 20k 呢"`、`query="反相比例电路 R1=20k 求 uo"`、含 history | `encode_query` 收到 query；user 消息含原问题与全部片段；history 顺序为 system→history→user；history 未被原地修改 | VectorStore 真、Embedding/LLM 假 | patch `aurora.rag.encode_query` 与 `get_client` | P0 |
-
 | RAG-INT-002 | rag | Integration | 自定义提示词生效 | `system_prompt="X"` / `None` | 分别使用 `"X"` 与 `RAG_SYSTEM_PROMPT`；`temperature=0.3` | 同上 | 同上 | P0 |
-
 | RAG-INT-003 | rag | Integration | top_k 透传 | `top_k=1` / `5` / `0` | 传入 `store.search` 的 k 与返回值长度一致；`k=0` → 空 hits → 走"课件库还是空的"分支 | VectorStore | 假 encoder 返回固定向量 | P1 |
-
 | RAG-INT-004 | rag→pipeline | Integration | `store=None` 的真实失败面 | Router 判 `concept`，`run(question, None)` | 现状：`retrieve(None, ...)` → `None.search` → `AttributeError`，Session 不写回。属**已知契约风险**，需决策后固定 | pipeline | patch Router，其余真实 | P0 |
-
 | RAG-INT-005 | rag→session | Integration | `content=None` 污染多轮状态 | fake 生成响应 `content=None` | 现状：`answer=None` 被 `add_turn` 写入，`len(session)==2` 且第二条 `content is None`。目标：抛明确异常且长度不变 | pipeline、session | patch Router + `aurora.rag.get_client` | P0 |
-
 | RAG-INT-006 | rag | Integration | 检索分数非归一化风险 | 未归一化向量入库 | 点积不再等于余弦；记录该前置条件必须在 `embedder` 侧保证 | NumPy | 无 | P2 |
-
 | RAG-AI-001 | retrieval | AI Eval | 检索质量 | 标注 `query → 相关 chunk/source`，含"无答案"题 | 报告 Recall@1/3/5、MRR、nDCG@5；"无答案误检率"单列；固定索引版本与 hash | 真实 BGE + 冻结索引 | 不 Mock | P0 |
-
 | RAG-AI-002 | generation | AI Eval | 正确性/忠实度/引用 | concept/feedback/power 代表题 + 片段不足的对抗题 | 报告答案正确率、faithfulness、诚实拒答率、citation precision/recall | 真实 LLM | 不 Mock；规则校验 + 人工抽检 | P0 |
-
 | RAG-AI-003 | ingestion | AI Eval | 切块策略的影响 | 固定语料，对比 600 字 vs 其他阈值、有无卡片 | 记录 Recall/MRR 差异；单次波动不作为回归判据 | 真实 Embedding | 离线实验，产物隔离 | P2 |
 
 ### 6.7 工具层 `tools.py`（安全边界，P0 最密集）
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | TOL-UNIT-001 | tools | Unit | 白名单正常计算 | `-(100/10)*(-3)`、`3**4+sqrt(2)*sqrt(8)`、`pi`、`e`、`-2`、`7%3` | 分别得 `30.0`、`85.0`、`π`、`e`、`-2`、`1`；返回 `float` | 无 | 无 | P0 |
-
 | TOL-UNIT-002 | tools | Unit | 拒绝危险语法 | `__import__("os").system(...)`、`(1).__class__`、`[1,2][0]`、`lambda:1`、`a=1`、字符串拼接 | `a=1` 在 `ast.parse(..., mode="eval")` 阶段抛原生 `SyntaxError`；其余可成功解析但不在 AST 白名单中的表达式抛 `ValueError`；全部被拒且无副作用 | 无 | 无 | P0 |
-
 | TOL-UNIT-003 | tools | Unit | 关键字参数不得静默改写语义（DEF-01） | `round(3.14159, ndigits=2)`；`round(3.14159, 2)` | 前者返回 `计算失败：不支持关键字参数…`（显式拒绝），后者返回 `"3.14"`；不允许再出现静默丢弃后返回 `"3"` | 无 | 无 | P0 |
-
 | TOL-UNIT-004 | tools | Unit | 精度截断 | `123456789`、`100/3`、`2**40` | 返回 `"1.23457e+08"`、`"33.3333"`、`"1.09951e+12"`（`:g` 仅 6 位有效数字）→ 测死当前行为，修复后应保留足够精度 | 无 | 无 | P1 |
-
 | TOL-UNIT-005 | tools | Unit | 异常转换矩阵 | `1/0`、`log(0)`、`sqrt(-1)`、`10**1000` | 全部返回 `"计算失败：…"` 字符串 | 无 | 无 | P0 |
-
 | TOL-UNIT-006 | tools | Unit | 预期表达式错误转换（DEF-02） | `(-8)**(1/3)`（复数结果）；`"1+"`（`SyntaxError`）；`sqrt()`（参数个数不符的 `TypeError`） | `calculate_expression()` 对非实数抛 `ValueError("计算结果不是实数")` 并保留 `ast.parse()` 原生 `SyntaxError`；`execute_tool()` 分别转为 `计算失败：计算结果不是实数`、`计算失败：表达式语法错误`、`计算失败：参数不匹配…`，均不向 `run_agent()` 逃逸 | 无 | 无 | P0 |
-
 | TOL-UNIT-007 | tools | Unit | 分派与参数校验 | 未知工具名；`arguments` 非 dict；`expr` 缺失/空串/非字符串 | 返回可识别错误字符串，不抛异常 | 无 | 无 | P0 |
-
 | TOL-UNIT-008 | tools | Unit | 布尔字面量类型放宽 | `"True"` / `"False"` | 返回 `"1"` / `"0"`（`bool` 是 `int` 子类）→ 待定是否收紧为拒绝 | 无 | 无 | P2 |
-
 | TOL-UNIT-009 | tools | Unit | 运放校验边界与符号 | `15`、`-15`、`15.01`、`-20`、`"错误：…"`、`"abc"`、`supply=12` | 边界值不告警；越界告警且符号 `+/-` 正确；非数值返回 `None`；`supply` 参数生效 | 无 | 无 | P0 |
-
 | TOL-UNIT-010 | tools | Unit | 资源边界（隔离执行） | `10**10000000`、`9**9**9`、`(10**1000)**1000`、200 层嵌套括号 | `calculate_expression()` 在解析前拒绝超长表达式（>300 字符）；`_eval_pow()` 限制指数绝对值（>1000）与整数幂结果位数（≈10 万 bit）；两者均经 `execute_tool()` 转为 `计算失败：…`。子进程 + 20s 超时执行，断言主进程不受影响；标 `slow`，不进默认 CI | OS | 子进程 | P2 |
-
 | TOL-AI-001 | tools/agent | AI Eval | 工具调用准确率 | 需算/无需算、单步/多步、单位干扰、非法表达式 | 报告"是否调用工具"决策准确率、工具名与参数 exact match、执行成功率、最终数值正确率 | 真实 LLM + 本地工具 | 不 Mock，独立作业 | P0 |
 
 ### 6.8 Agent 回环 `agent.py`
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | AGT-UNIT-001 | agent | Unit | 单轮工具 + 终答 | 第 1 次返回 1 个 tool_call，第 2 次返回 `content` | 返回 `(content, trace)`；messages 顺序 `system→user→assistant(tool_calls)→tool`；trace 长度 1 | 无 | scripted fake | P0 |
-
 | AGT-UNIT-002 | agent | Unit | 一次多个 tool_calls | 单次返回 2 个 tool_call | 生成 2 条 `tool` 消息且 `tool_call_id` 各自对应；trace 顺序与调用一致 | 无 | scripted fake | P0 |
-
 | AGT-UNIT-003 | agent | Unit | 坏参数与未知工具 | `arguments="{oops"`；`name="unknown_tool"` | 坏 JSON 变 `{}` → 工具返回"缺少字符串参数"；未知工具返回"未知工具"字符串；均作为 `tool` 消息回传，不抛异常 | tools | scripted fake | P0 |
-
 | AGT-UNIT-004 | agent | Unit | 终止与异常 | ①连续 5 轮只返回 tool_call ②`finish_reason="length"` 且无内容 ③无 tool_call 且 `content=None` 且 `finish_reason="stop"` ④`finish_reason="length"` 且 `content="…半截"` | ① 返回占位文案 + 完整 trace（**当前被当成功**）② `RuntimeError("模型输出达到长度限制")` ③ `RuntimeError("模型没有返回有效内容")` ④ 按正常回答返回半截内容、trace 正常、无告警（**当前被当成功**，待 §13 第 3 条决策） | ④ 的期望随 §13 第 3 条结论改写 | scripted fake | P0 |
-
 | AGT-UNIT-005 | agent | Unit | validator 挂载与消息拼装 | `validators={"calculate_expression": f}`，f 返回 `"WARN"` | `tool` 消息内容为 `"<result>\n[合理性校验] WARN"`；trace 同时含 `result` 与 `warning`；无 validator 时内容仅为 `result` | 无 | scripted fake + 直接调用 | P0 |
-
 | AGT-UNIT-006 | agent | Unit | history 只接受纯文本 | `history` 含 `tool` 角色消息 | 现状：原样 `extend` 进 messages，不做过滤 → 记录为契约风险（应由调用方保证） | 无 | scripted fake 记录 messages | P2 |
-
 | AGT-INT-001 | agent→tools | Integration | 真实执行 + 校验回传 | 假 LLM 先请求 `-(100/10)*(-3)`，再出终答 | trace: `result="30"`、`warning` 含"钳位在 +15V"；第 2 次请求的末条 `tool` 消息含该警告 | 真实 tools | 只 patch `aurora.agent.get_client` | P0 |
-
 | AGT-INT-002 | agent→tools | Integration | 中间量误触发电压校验 | 先 `100000*3`，再 `0.5*10` | 现状：**每次** `calculate_expression` 都跑 validator，第 1 步就产生"饱和"警告 → 需决策"只校验最终输出"或"取消按工具名自动校验" | 真实 tools | scripted fake 捕获每轮消息 | P0 |
-
 | AGT-INT-003 | agent→tools | Integration | 工具异常不外溢 | 假 LLM 请求 `(-8)**(1/3)` | 非实数运算错误不外溢：以 `tool` 消息与 trace 回传，Agent 继续下一轮并返回最终回答 | 真实 tools | scripted fake | P0 |
 
 ### 6.9 Pipeline 编排与端到端
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | PIP-UNIT-001 | pipeline | Unit | 降级文案 | `fallback_answer("用 Python 写快排")` | 含原问题、能力清单、学习路径；纯函数无副作用 | 无 | 无 | P0 |
-
 | PIP-UNIT-002 | pipeline | Unit | 提示词分派表 | `RAG_PROMPTS` 的键集合 | 恰为 `{feedback, power}`；`concept` 不在表中（回落到默认提示词）；`OPAMP_VALIDATORS` 只挂 `calculate_expression` | 无 | 无 | P1 |
-
 | PIP-INT-001 | pipeline | Integration | 五分支统一返回 | 参数化五类 + `top_k=5` + 有 Session | 七字段齐全且类型正确；`trace`/`hits` 互斥；`session` 恰好 +2 且为原话 + 最终答案 | 下游替身 | patch `route` 与三个能力函数 | P0 |
-
 | PIP-INT-002 | pipeline | Integration | 下游异常传播且不写回 | ①`route` 抛错 ②`run_agent` 抛错 ③`ask_rag` 抛错 ④`rewrite` 抛错 | ①②③ 异常向上传播且 `len(session)==0`；④ 回退原问题并继续执行 | 下游替身 | 参数化 patch | P0 |
-
 | PIP-INT-003 | pipeline | Integration | fallback 零外部调用 | Router 固定 `fallback` | `run_agent`/`ask_rag` **未被调用**（哨兵）；`trace=hits=None` | 无 | 哨兵替身 | P0 |
-
 | PIP-INT-004 | pipeline | Integration | 临时 Session 无跨调用泄漏 | 连续两次 `run(q, store)` 不传 session | 两次的 `history` 均为 `[]`；无全局可变状态 | pipeline | patch 能力函数捕获 `history` | P0 |
-
 | PIP-INT-005 | pipeline | Integration | 轮数耗尽被当成功 | opamp 分支 fake LLM 5 轮都只调工具 | 现状：占位文案写入 Session，`answer` 与正常答案无法区分 → 目标：抛明确异常或返回可识别失败标记，Session 不变 | agent、session | scripted fake | P0 |
-
 | PIP-E2E-001 | pipeline | E2E | 离线五类冒烟 | 5 个代表问题 + 3 个二维向量的小索引 + scripted LLM | 每类命中正确分支；返回 schema 与 `demo_*.py` 的消费方式兼容；Session 各 +2 | 全链 | 统一 fake，不联网 | P0 |
-
 | PIP-E2E-002 | pipeline | E2E | 空索引全链 | 空 `VectorStore` + concept 路由 | 返回"课件库还是空的…"，`hits==[]`，Session +2（**该降级文案会进历史**，待决策，见 §13 第 13 条） | 全链 | fake | P1 |
-
 | PIP-E2E-003 | pipeline | E2E | 在线冒烟（少量） | 五类各 1 题 + 1 个多轮剧本 | 请求成功、schema 完整、无未处理协议错误；**不判质量** | DeepSeek、BGE、真实索引 | 不 Mock，手动/定时 | P1 |
 
 ### 6.10 Session 与多轮
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | SES-UNIT-001 | session | Unit | 创建、顺序、隔离 | 新建两个 Session，各 `add_turn` | 默认 `[]`；顺序 `user,assistant`；`len()` 正确；两实例互不影响 | 无 | 无 | P0 |
-
 | SES-UNIT-002 | session | Unit | 公开可变引用语义 | `ctx = s.context(); ctx.append(...)`；改写 `ctx[0]["content"]` | 现状：**直接改变 Session 内部状态** → 测死该风险语义，不写成"隔离保证" | 无 | 无 | P1 |
-
 | SES-UNIT-003 | session | Unit | 空/异形输入 | `add_turn("", "")`；`add_turn(None, None)` | 现状：照单写入，不做校验 → 记录契约边界 | 无 | 无 | P2 |
-
 | SES-INT-001 | multi-turn | Integration | 上下文传递 + 原话写回 | 两轮复用同一 Session，第二轮为省略追问 | 第二轮 `rewrite` 收到 2 条历史；生成侧 history 为纯文本；最终 4 条消息且第 3 条是**原追问**而非 standalone | pipeline | scripted fake | P0 |
-
 | SES-INT-002 | multi-turn | Integration | 换话题不被拽回 | 先 opamp 再问 feedback | 第 2 轮 Router 收 standalone；走 RAG 分支；历史顺序不变 | pipeline | scripted fake | P1 |
-
 | SES-INT-003 | multi-turn | Integration | 失败轮次不产生半条历史 | 第 1 轮成功、第 2 轮 `ask_rag` 抛错 | 第 2 轮后 `len(session)` 仍为 2，历史无半轮 | pipeline、session | patch 能力函数 | P0 |
-
 | SES-INT-004 | multi-turn | Integration | 长历史无窗口 | 连续 10 轮 | 现状：`context()` 返回全部 20 条，无截断 → 记录 token 增长风险与后续窗口需求 | pipeline | fake | P2 |
-
 | SES-E2E-001 | multi-turn | E2E | 三轮闭环 | 与 `demo_multi_turn.py` 同剧本 | `0→2→4→6`；第 2 轮参数保真；第 3 轮类型切换为 `feedback` | 全链 | scripted fake，真实 Session | P0 |
-
 | SES-RISK-001 | session | Integration | 并发非安全观测 | 2 线程共享一个 Session 各写 50 轮 | 不设"通过"门槛；若观察到条数 <100 或消息错序即记录；标 `slow`，不进 CI | 线程调度 | 受控实验 | P2 |
-
 | MTR-AI-001 | multi-turn | AI Eval | 上下文理解质量 | 指代/参数替换/纠错/换题/长历史剧本 | standalone 保真率、路由准确率、答案是否用新参数、旧数值污染率 | 真实 LLM | 不 Mock；逐轮存档 | P1 |
 
 ### 6.11 Judge 与评测脚本
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | JUD-UNIT-001 | judge | Unit | 无 tool_call / 坏 JSON | 两份异常响应 | `judge_answer` 默认 `partial`；`judge_hallucination` 默认 `False`；reason 可识别 | 无 | patch `aurora.judge.get_client` | P0 |
-
 | JUD-UNIT-002 | judge | Unit | 非法枚举/类型收敛 | `judgment="maybe"`；`hallucinated="yes"`；`hallucinated=1` | 非法枚举 → `partial`；非 `bool` → `False` | 无 | fake | P0 |
-
 | JUD-UNIT-003 | judge | Unit | 字段回填契约 | 正常 `{"judgment":"correct","reason":"…"}` | 返回 `{"judgment": "correct", "reason": "…"}`；幻觉分支返回键为 `hallucinated` 而非 `judgment` | 无 | fake | P1 |
-
 | EVL-UNIT-001 | eval.py | Unit | 关键词判分边界 | `expected="5V\|5 V"`；答案含"不是 5V"；`answer=None` | 现状：任一子串命中即 True（含否定句假阳性）；`None` 不抛异常返回 False | 无 | 直接导入 `scripts.eval.is_correct` | P1 |
-
 | EVL-UNIT-002 | eval_report.py | Unit | 引用率/多数投票 | 重复 source、空 hits、投票 2:1 与 1:1 | 命中率 = 命中来源数/片段数（重复来源会重复计数）；`hits=[]` → `None`；平票取先出现值 | 无 | 无 | P1 |
-
 | EVL-UNIT-003 | eval_report.py | Unit | 汇总分母 | 12 题中 7 道有 hits | 引用率与幻觉率分母为 RAG 题数（7），不是总题数；无 RAG 题时打印"无 RAG 题"且不除零 | 无 | 构造 rows | P1 |
-
 | EVL-META-001 | judge | AI Eval（元） | 裁判与人工一致性 | 人工双标 40 条（正确/部分/错误/幻觉） | 报告 agreement、Cohen's κ、各类 precision/recall；同源模型偏差单列 | 裁判 LLM + 人审 | 盲审 + 异源裁判抽检 | P0 |
 
 ### 6.12 建库脚本与旧入口
 
 | Test ID | Module | Level | Objective | Input / Scenario | Expected Result | Dependencies | Mock Strategy | Priority |
-
 |---|---|---|---|---|---|---|---|---|
-
 | IDX-INT-001 | build_index | Integration | 可控语料建库 | `tmp_path` 下 2 个 md + 1 个卡片文件 + 假 encoder | Chunk 总数 = 课件块 + 卡片块；落盘两个文件；自检 `top[0].score ≈ 1`；**不写真实索引** | 文件系统 | patch 路径常量 + `encode_passages` | P1 |
-
 | IDX-INT-002 | build_index | Integration | 空语料与缺失卡片 | courseware 目录为空；卡片文件不存在 | 空目录 → 打印提示并 `return 1`；缺卡片 → 跳过并继续 | 文件系统 | `tmp_path` | P1 |
-
 | LGC-UNIT-001 | companion_v0 | Unit | 消息构造 | `ask("q", history=[...])` | messages 为 `system→history→user`；`temperature=0.7` | 无 | patch `aurora.companion_v0.get_client` | P2 |
-
 | LGC-E2E-001 | chat_loop | E2E | 旧入口冒烟 | 单轮输入 + `exit` | 能正常退出；不涉及 Pipeline（明确记录"两条入口"现状） | 真实 LLM | 自动化需 patch `builtins.input` 与 `ask_stream`；当前仅有手工入口 | P2 |
 
 ---
@@ -528,38 +388,23 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 ## 10. 测试覆盖缺口（按风险排序）
 
 | # | 缺口 | 后果 | 证据 | 优先级 |
-
 |---|---|---|---|---|
 
 
 | 1 | RAG `content=None`、`run_agent()` 失败出口被当成功（轮数耗尽 / 截断但有内容） | 失败结果被当成功写进 `Session` 历史，污染下一轮语义 | `rag.ask_rag` 的 `content=None` 分支、`agent.py:120-130` 的三个出口；决策见 §13 第 2、3 条 | P0 |
-
 | 2 | Router 非 dict JSON / 非数值 confidence 不兜底 | 第三方响应形状一变即 `AttributeError`/`TypeError` | `router.route` 的 `arguments` 解析段 | P0 |
-
 | 3 | validator 对每个中间计算都生效 | 中间量 >15 即误报"运放饱和"，诱导模型改错结论 | `agent.run_agent` 的 `validator` 挂载点 | P0 |
-
 | 4 | 五分支与失败写回无回归 | 分支错配、半轮历史污染不可见 | 缺少覆盖五分支与失败写回的回归用例 | P0 |
-
 | 5 | `execute_tool` 结果只保留 6 位有效数字 | `round(x, ndigits=2)` 一类调用得不到预期精度，而提示词要求模型“直接引用工具结果”→ 截断值被当标准答案写进回答 | `tools.calculate_expression` 的结果格式化分支 | P1 |
-
 | 6 | 向量与 chunk 数量/维度无校验 | 索引损坏时错配命中或深层异常 | `VectorStore.search`、`VectorStore.save/load` | P1 |
-
 | 7 | 无相似度阈值、无"无答案"标注 | 无关问题也硬塞片段，幻觉入口 | `rag.ask_rag` 的 `if not hits` 分支（只判空、不判分数） | P0（AI Eval） |
-
 | 8 | 评测集规模过小且模板化 | 指标不代表泛化，满分通过也无统计意义 | `data/eval_set.json` | P0 |
-
 | 9 | Session 返回内部可变列表 + 无限增长 | 状态可被绕过写接口修改；长会话 token 与费用线性增长 | `Session.context`、`Session.add_turn` | P1 |
-
 | 10 | 超时/重试依赖 SDK 默认 | 未显式配置，行为随 `openai` 版本浮动，不是项目契约 | `config.get_client` 未传 `timeout` / `max_retries` | P1 |
-
 | 11 | 索引不可复现 | 课件在仓库外、`data/index` 被忽略，他机无法重建同结果 | `.gitignore`、`build_index.py` 的 `COURSEWARE_DIR` 常量 | P1 |
-
 | 12 | 评测不留档 | 无法做质量/成本/延迟回归 | `eval_report.py` 只 `print` | P1 |
-
 | 13 | 全角字符被清洗 | `输出＝１５Ｖ` → `输出正常`，知识文本丢关键数值 | `chunker._clean_line` | P1（需重跑索引） |
-
 | 14 | `resp.choices` 为空列表时直接取 `resp.choices[0]` | 未处理的响应形状 → 裸 `IndexError`，非「失败被当成功」类，但同样无降级 | `agent.run_agent` 的 `choice = resp.choices[0]` | P1 |
-
 | 15 | `finish_reason="length"` 同时带 `tool_calls` 时，`if msg.tool_calls` 先命中并继续执行工具 | 截断被当正常，多算一轮后仍可能返回半截结果（概率极低，与 #14 同属响应形状防御） | `agent.run_agent` 的 `if msg.tool_calls` 分支位置 | P2 |
 
 ---

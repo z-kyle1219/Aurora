@@ -341,7 +341,7 @@ class Session:
 
 - `config.py`：缺少 key 时主动失败。
 - `router.py`：无 tool call、JSON 解析失败和非法标签时回退到 `concept`。
-- `agent.py`：非法工具 JSON 按空参数执行；模型输出被截断或为空时抛出 `RuntimeError`。
+- `agent.py`：非法工具 JSON 按空参数执行；截断且无内容时抛出 `RuntimeError("模型输出达到长度限制")`，截断但已有内容时按正常回答返回（该行为仍待决策），其他无内容响应抛出 `RuntimeError("模型没有返回有效内容")`。
 - `tools.py`：将 `ValueError`、`ZeroDivisionError`、`OverflowError`、`SyntaxError` 与 `TypeError` 统一转换为可返回给模型的 `计算失败：…` 字符串；复数结果、关键字参数、超长表达式与超限幂运算均以 `ValueError` 拒绝，`TypeError`（参数不匹配）不会穿出工具边界。
 - `rewrite.py`：异常、空结果或超过 500 字时回退原问题；正常结果会剥离首尾空白和引号。
 - `rag.py`：空索引时返回提示文本。
@@ -355,7 +355,7 @@ class Session:
 
 ## 12. 测试与评测现状
 
-仓库已建立 pytest 阶段 0 基础设施与阶段 1 纯逻辑用例：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及 `tools` / `chunker` / `card_loader` / `vector_store` / `session` / `config` 的单元与集成用例。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；阶段 2 及之后尚未整阶段建立，阶段 3 的 `AGT-INT-003` 因 DEF-02 验证提前完成；E2E 与 CI 仍未建立。当前判定及证据入口以 `docs/testing/TEST_STATUS.md` 为准。
+仓库已建立 pytest 阶段 0 基础设施与阶段 1 纯逻辑用例：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及 `tools` / `chunker` / `card_loader` / `vector_store` / `session` / `config` 的单元与集成用例。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；阶段 2 及之后尚未整阶段建立，部分后续阶段用例因缺陷验证提前完成；E2E 与 CI 仍未建立。当前判定、例外及证据入口以 `docs/testing/TEST_STATUS.md` 为准。
 
 ### 12.1 快速评测
 
@@ -450,7 +450,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - Session 持久化、隔离和并发管理。
 - 日志、监控、统一异常响应和调用重试。
 - 相似度阈值、混合检索和 rerank。
-- CI 自动执行；阶段 2 之后尚未整阶段建立的协议、编排与 E2E 用例（`AGT-INT-003` 已提前完成）。
+- CI 自动执行；阶段 2 及之后尚未整阶段建立的协议、编排与 E2E 用例（部分用例提前完成，见 `docs/testing/TEST_STATUS.md`）。
 - 通用工具注册、外部工具和并行工具执行。
 
 ### 未知

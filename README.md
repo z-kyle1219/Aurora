@@ -182,7 +182,7 @@ LLM 做多位数乘除会出错，而且错误是"看起来合理"的——这�
 
 诚实列出来，也是下一步的待办：
 
-- **测试只盖住了静态逻辑**：阶段 0/1 已落地（pytest 基础设施 + `tools`/`chunker`/`card_loader`/`vector_store`/`session`/`config`）；阶段 3 的 `AGT-INT-003` 因缺陷验证提前完成，但阶段 2 及之后尚未整阶段建立，Router、Rewrite、Judge、Agent 的畸形响应与失败路径以及 E2E、CI 仍是缺口。现状以 `docs/testing/TEST_STATUS.md` 为准。
+- **测试只盖住了静态逻辑**：阶段 0/1 已落地（pytest 基础设施 + `tools`/`chunker`/`card_loader`/`vector_store`/`session`/`config`）；阶段 2 及之后尚未整阶段建立，Router、Rewrite、Judge、Agent 的畸形响应与失败路径以及 E2E、CI 仍是缺口，部分后续用例提前完成。现状与例外以 `docs/testing/TEST_STATUS.md` 为准。
 - **答案判分是两套标准**：`eval.py` 用关键词命中（会误判），`eval_report.py` 用 LLM-as-judge（同源偏差）。都不到「能对外报准数字」的程度。
 - **多轮接了但不受控**：`run(question, store, *, session=...)` 已把 history 透传给 `run_agent()` 和 `ask_rag()`，改写层只用最近两轮；但 Session 只在进程内、历史全量进 prompt，没有窗口截断 / 摘要 / token 预算，问深了延迟和费用线性上涨。
 - **检索无相似度阈值**：永远返回 top-3，问完全无关的问题也会硬塞片段进来，是幻觉入口。
@@ -302,7 +302,7 @@ opamp 链路有唯一正确答案，「降一级提示后学生是否做对」�
 - [x] **W3 Router**：LLM 分类五类分流，校验器按类型自动挂载；12 题评测集跑通
 - [x] **W4 正式评测**：`eval_report.py` 多次采样取多数 + LLM-as-judge 判分 + 幻觉率 / 引用命中率 / 延迟
 - [x] **W4 测试阶段 0/1**：离线 pytest 基础设施（客户端 / Socket / BGE 三层防线）+ 纯逻辑用例
-- [ ] **W4 测试阶段 2+**：Router / Rewrite / Judge / Agent 的畸形响应与失败路径；后续编排、E2E 与 CI 接入（`AGT-INT-003` 已因缺陷验证提前完成）
+- [ ] **W4 测试阶段 2+**：Router / Rewrite / Judge / Agent 的畸形响应与失败路径；后续编排、E2E 与 CI 接入（部分用例已提前完成，见测试状态）
 - [ ] **W4 观测**：混淆矩阵 + 日志落盘（trace / 耗时 / token 成本）
 - [ ] **W4 可演示**：Streamlit 界面 + 多轮会话（`Session` 已就绪，差的是界面与持久化）
 - [ ] **W4 对比实验**：`feature/langgraph` 分支用 LangGraph 重写同一流程，对比代码量、可调试性与延迟
