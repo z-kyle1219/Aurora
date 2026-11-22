@@ -75,7 +75,7 @@
 
 - **但**还有两类"假成功"写回路径：`ask_rag()` 在 `content is None` 时返回 `None`、`run_agent()` 达 `max_rounds` 返回占位文案。处置已于 2026-11-22 定案（§13 第 2、3 条：都改为写回前的明确异常），现登记为缺陷 DEF-06、DEF-07，断言见 §6.6 `RAG-INT-005` 与 §6.9 `PIP-INT-005`。
 
-- 空索引时 `ask_rag()` 返回"课件库还是空的…"字符串，同样被当作正常答案写回；是否保留该降级写回待决策，见 §13 第 13 条。
+- 空索引时 `ask_rag()` 返回"课件库还是空的…"字符串；该文案是用户实际看到的最终回答，已决定保留写入 Session，见 §13 第 13 条。
 
 - `standalone` 只进 Router 与检索，不进生成、不进 Session。
 
@@ -300,7 +300,7 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 | PIP-INT-004 | pipeline | Integration | 临时 Session 无跨调用泄漏 | 连续两次 `run(q, store)` 不传 session | 两次的 `history` 均为 `[]`；无全局可变状态 | pipeline | patch 能力函数捕获 `history` | P0 |
 | PIP-INT-005 | pipeline | Integration | 轮数耗尽被当成功 | opamp 分支 fake LLM 5 轮都只调工具 | 已定案（2026-11-22，§13 第 3 条）：`run_agent` 抛 `RuntimeError`（消息含「最大工具调用轮数」），Pipeline 不写回，Session 长度不变。现状占位文案写入 Session、`answer` 与正常答案无法区分 → DEF-07，`xfail(strict=True)` 定标 | agent、session | scripted fake | P0 |
 | PIP-E2E-001 | pipeline | E2E | 离线五类冒烟 | 5 个代表问题 + 3 个二维向量的小索引 + scripted LLM | 每类命中正确分支；返回 schema 与 `demo_*.py` 的消费方式兼容；Session 各 +2 | 全链 | 统一 fake，不联网 | P0 |
-| PIP-E2E-002 | pipeline | E2E | 空索引全链 | 空 `VectorStore` + concept 路由 | 返回"课件库还是空的…"，`hits==[]`，Session +2（**该降级文案会进历史**，待决策，见 §13 第 13 条） | 全链 | fake | P1 |
+| PIP-E2E-002 | pipeline | E2E | 空索引全链 | 空 `VectorStore` + concept 路由 | 返回"课件库还是空的…"，`hits==[]`，Session +2；降级文案作为用户实际看到的回答写入历史（§13 第 13 条已定案） | 全链 | fake | P1 |
 | PIP-E2E-003 | pipeline | E2E | 在线冒烟（少量） | 五类各 1 题 + 1 个多轮剧本 | 请求成功、schema 完整、无未处理协议错误；**不判质量** | DeepSeek、BGE、真实索引 | 不 Mock，手动/定时 | P1 |
 
 ### 6.10 Session 与多轮
@@ -523,7 +523,7 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 
 ## 13. 产品契约决策与剩余风险
 
-> 第 1–4 条已于 2026-11-22 定案（保留决策依据）；第 5–13 条仍待确认。
+> 第 1–4、13 条已于 2026-11-22 定案（保留决策依据）；第 5–12 条仍待确认。
 
 1. **`store=None` 且路由到 RAG 分支**：继续抛 `AttributeError`（视为开发错误），还是返回可识别降级文案？无论哪种，都不应直接调 `None.search()`。
 
@@ -558,7 +558,9 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 
 12. **质量门槛**：在拿到首轮可信基线前，本文不设任何百分比；由你决定是"只看趋势"还是"设回归阈值"。
 
-13. **空索引降级文案是否写入历史**：空库时 `ask_rag()` 返回"课件库还是空的…"，Pipeline 会把它当正常答案 `add_turn`。是接受为合法回答，还是标记为可识别的降级、不进历史？
+13. **空索引降级文案是否写入历史**：空库时 `ask_rag()` 返回"课件库还是空的…"，Pipeline 会把它当正常答案 `add_turn`。
+
+    **已定案（2026-11-22）**：保留写入。该文案是用户实际看到的最终回答，写入历史可保持界面可见对话与 Session 一致；未来若引入结构化错误状态，再单独设计降级状态和写回规则。断言见 §6.9 `PIP-E2E-002`。
 
 ---
 
