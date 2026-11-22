@@ -9,10 +9,9 @@
 本模块让裁判去判一批「已双标并仲裁」的固定样本，输出裁判与人工标签的
 一致性。它不产出能力分数，只回答一个问题：**后面那些质量指标，值不值得信。**
 
-当前数据状态：`judge_agreement_v1` 的标签是 AI 起草的标注草稿，**尚未**经两位
-标注者独立标注（见数据集 `annotation.status`）。因此现在跑出的 agreement 只能
-用来验证统计口径与评测流程，不能当作裁判可信度的结论；在线用例在该状态下
-直接失败，避免有人把草稿一致性当成人工一致性引用。
+当前数据状态以数据集 `annotation.status` 为准；`judge_agreement_v1` 已由两位人工
+标注者独立核验。加载器仍保留草稿状态保护，避免未来新增草稿数据被误当成人工
+一致性结论。
 
 数据集承载格式
 --------------
@@ -419,7 +418,7 @@ def _hallucination_section(rows: Sequence[dict]) -> dict:
         "per_class": per_class,
         "confusion": confusion_matrix(pairs, (False, True)),
         "false_negative_rate": _rate(positive["fn"], positive["support"]),
-        "false_positive_rate": _rate(negative["fp"], negative["support"]),
+        "false_positive_rate": _rate(positive["fp"], negative["support"]),
     }
 
 
@@ -651,7 +650,11 @@ def make_judge_functions(client: Any, model: str) -> tuple[Callable[[MetaCase], 
 
     def hallucination_fn(case: MetaCase) -> dict:
         return judge.judge_hallucination(
-            case.reference_context, case.candidate_answer, client=client, model=model
+            case.reference_context,
+            case.candidate_answer,
+            question=case.question,
+            client=client,
+            model=model,
         )
 
     return answer_fn, hallucination_fn

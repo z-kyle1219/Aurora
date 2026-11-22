@@ -142,17 +142,18 @@ def judge_answer(standard_answer: str, model_answer: str, *,
     return result
 
 
-def judge_hallucination(context: str, model_answer: str, *,
+def judge_hallucination(context: str, model_answer: str, *, question: str | None = None,
                         client=None, model: str | None = None) -> dict:
     """判断回答是否编造了检索片段之外的内容。返回 {judgment: bool, reason}。
 
     注意：这里复用了 _call_judge 的通用结构，但返回的字段是布尔值
     （hallucinated），而不是三档判分。
     """
+    question_block = f"【原始问题】\n{question}\n\n" if question else ""
     result = _call_judge(
         _HALLUCINATION_PROMPT,
         _HALLUCINATION_TOOL,
-        f"【检索片段】\n{context}\n\n【Aurora 回答】\n{model_answer}",
+        f"{question_block}【检索片段】\n{context}\n\n【Aurora 回答】\n{model_answer}",
         field="hallucinated",
         default=False,
         client=client,

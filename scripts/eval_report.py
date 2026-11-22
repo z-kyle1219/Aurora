@@ -70,7 +70,9 @@ def sample_once(case: dict, store: VectorStore) -> dict:
     if result["hits"]:
         hit_rate = citation_hit_rate(result["answer"], result["hits"])
         context = "\n".join(h.chunk.text for h in result["hits"])
-        hallucinated = judge_hallucination(context, result["answer"])["hallucinated"]
+        hallucinated = judge_hallucination(
+            context, result["answer"], question=case["question"]
+        )["hallucinated"]
 
     return {
         "classify_ok": classify_ok,

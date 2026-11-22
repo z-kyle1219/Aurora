@@ -72,3 +72,21 @@ def test_jud_unit_002__non_bool_hallucination_converges_to_false(
 
     assert verdict == {"hallucinated": False, "reason": expected_reason}
     fake.assert_exhausted()
+
+
+def test_jud_unit_003__hallucination_prompt_includes_optional_question(
+    monkeypatch, scripted_client_factory, response_factory, message_factory, tool_call_factory
+):
+    """JUD-UNIT-003：幻觉裁判可看到题干，避免把题干参数误判为片段外编造。"""
+    tool_call = tool_call_factory("judge", '{"hallucinated":false,"reason":"题干有依据"}')
+    fake = scripted_client_factory([response_factory(message_factory(tool_calls=[tool_call]))])
+    monkeypatch.setattr(judge, "get_client", lambda: fake)
+
+    verdict = judge.judge_hallucination(
+        "输出受电源限制", "输出在 ±15V 内", question="电源 ±15V，求输出"
+    )
+
+    assert verdict == {"hallucinated": False, "reason": "题干有依据"}
+    user_content = fake.last_call["messages"][1]["content"]
+    assert user_content.startswith("【原始问题】\n电源 ±15V，求输出\n\n【检索片段】")
+    fake.assert_exhausted()

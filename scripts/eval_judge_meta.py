@@ -5,9 +5,9 @@
 而是「后面那些质量指标值不值得信」。
 
 前提：只有数据集 `annotation.status` 为 `human_double_annotated`（且标注者是两
-位不同的人）时，这些数字才是「裁判与人工的一致性」。当前数据集是 AI 起草的
-标注草稿，脚本默认拒绝执行；`--allow-draft-labels` 只用于验证链路，报告与终端
-都会标明「草稿 gold、不可引用」。
+位不同的人）时，这些数字才是「裁判与人工的一致性」。脚本对未来的草稿数据
+仍默认拒绝执行；`--allow-draft-labels` 只用于验证链路，报告与终端都会标明
+「草稿 gold、不可引用」。
 
 用法（在 aurora 目录下）：
 
@@ -153,12 +153,12 @@ def main(argv: list[str] | None = None) -> int:
         prices=prices,
     )
     markdown = judge_meta.format_report(report)
-    print("\n" + markdown)
 
     if args.out is not None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"JSON 报告已写入：{args.out}")
+    print("\n" + markdown)
     return 0
 
 

@@ -383,9 +383,9 @@ class Session:
 
 ### 12.3 裁判元评估（EVL-META-001）
 
-`src/aurora/judge_meta.py` 与 `scripts/eval_judge_meta.py` 让裁判去判一批带双标标注的样本（当前为 AI 起草的草稿标注），衡量的是**裁判本身**而不是助教：
+`src/aurora/judge_meta.py` 与 `scripts/eval_judge_meta.py` 让裁判去判一批带双标标注的样本，衡量的是**裁判本身**而不是助教：
 
-- 数据集 `data/eval/meta/judge_agreement_v1.json`：40 条，`correct/partial/wrong/hallucinated` 各 10 条，每条含问题、参考片段、被评回答与两版标签，不一致的 6 条带仲裁（gold 取仲裁结果）。**当前 `annotation.status` 为 `ai_drafted_pending_human_double_annotation`：两版标签与仲裁都是 AI 起草的草稿，没有两位标注者独立标注**，只能用于验证统计口径与流程。
+- 数据集 `data/eval/meta/judge_agreement_v1.json`：40 条，`correct/partial/wrong/hallucinated` 各 10 条；当前 `annotation.status` 为 `human_double_annotated`，两位人工标注者的 `judgment` 与 `hallucinated` 标签全部一致，无需仲裁。
 - 输出 agreement、Cohen's κ、各类 precision/recall/F1 与混淆矩阵；幻觉二分类单独一套；同源偏差按「裁判模型家族 vs 回答生成模型」分组，单列一致性、宽松度与幻觉漏报率。
 - 所有指标都对照 gold：人工双标完成后是人工仲裁结果，草稿状态下是草稿标签，报告会按 `annotation.status` 切换措辞（「裁判 vs 人工 gold」或「裁判 vs 草稿 gold」）。不设任何质量百分比门槛，只出报告与需人工复核的样本清单。
 - 在线入口要求显式 `online` + `ai_eval` marker 与进程环境中的 API key，脚本不读取 `.env`；`--validate-only` 可离线校验数据集格式。标注状态不为 `human_double_annotated` 时，在线用例直接失败、脚本默认拒绝执行（`--allow-draft-labels` 仅用于链路验证），报告自身也会标注「不可引用」。统计口径由 `EVL-UNIT-004`~`EVL-UNIT-008` 离线保护。

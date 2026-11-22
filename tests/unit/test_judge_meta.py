@@ -349,6 +349,17 @@ def test_evl_unit_008__report_shape_usage_after_run_and_cost():
         assert key in report
     assert report["judge"]["calls"] == 4
     assert report["judge_errors"] == {"count": 0, "cases": []}
+    assert report["hallucination"]["false_negative_rate"] == 0.0
+    assert report["hallucination"]["false_positive_rate"] == 0.0
+
+    false_positive = judge_meta.run_meta_eval(
+        cases, judge_model="deepseek-chat",
+        judge_answer_fn=answer,
+        judge_hallucination_fn=lambda case: {"hallucinated": True, "reason": "stub"},
+    )
+    # 一条非幻觉样本被误报，一条真实幻觉样本命中：FPR=1/1，不能误取 False 类的 fp。
+    assert false_positive["hallucination"]["false_positive_rate"] == 1.0
+    assert false_positive["hallucination"]["false_negative_rate"] == 0.0
 
     priced = judge_meta.run_meta_eval(
         cases, judge_model="deepseek-chat",

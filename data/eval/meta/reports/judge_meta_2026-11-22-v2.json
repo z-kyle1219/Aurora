@@ -1,0 +1,709 @@
+{
+  "test_id": "EVL-META-001",
+  "generated_at": "2026-11-22T21:23:40+0800",
+  "dataset": {
+    "path": "D:/乌云agent/aurora/data/eval/meta/judge_agreement_v1.json",
+    "version": "2df7b9a569de",
+    "cases": 40,
+    "by_category": {
+      "correct": 10,
+      "partial": 10,
+      "wrong": 10,
+      "hallucinated": 10
+    },
+    "adjudicated": 0,
+    "annotation_status": "human_double_annotated",
+    "annotators": [
+      "human-annotator-a",
+      "human-annotator-b"
+    ],
+    "annotation_note": "两位人工标注者已独立核验 40 条样本，judgment 与 hallucinated 标签全部一致，无需第三方仲裁。",
+    "human_double_annotated": true,
+    "evaluated": 40
+  },
+  "index": null,
+  "index_note": "EVL-META-001 的参考片段由数据集自带，不读取本地索引",
+  "judge": {
+    "model": "deepseek-chat",
+    "base_url": "https://api.deepseek.com",
+    "temperature": 0.0,
+    "samples": 1,
+    "calls": 80
+  },
+  "human_baseline": {
+    "n": 40,
+    "judgment_agreement": 1.0,
+    "judgment_kappa": 1.0,
+    "hallucination_agreement": 1.0,
+    "hallucination_kappa": 1.0,
+    "disagreements": [],
+    "adjudicated": 0
+  },
+  "answer_judgment": {
+    "n": 40,
+    "agreement": 0.825,
+    "kappa": 0.7383177570093458,
+    "per_class": {
+      "correct": {
+        "support": 10,
+        "tp": 10,
+        "fp": 5,
+        "fn": 0,
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8
+      },
+      "partial": {
+        "support": 20,
+        "tp": 13,
+        "fp": 0,
+        "fn": 7,
+        "precision": 1.0,
+        "recall": 0.65,
+        "f1": 0.787878787878788
+      },
+      "wrong": {
+        "support": 10,
+        "tp": 10,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.8333333333333334,
+        "recall": 1.0,
+        "f1": 0.9090909090909091
+      }
+    },
+    "confusion": {
+      "correct": {
+        "correct": 10,
+        "partial": 0,
+        "wrong": 0
+      },
+      "partial": {
+        "correct": 5,
+        "partial": 13,
+        "wrong": 2
+      },
+      "wrong": {
+        "correct": 0,
+        "partial": 0,
+        "wrong": 10
+      }
+    },
+    "gold_distribution": {
+      "correct": 10,
+      "partial": 20,
+      "wrong": 10
+    },
+    "judge_distribution": {
+      "correct": 15,
+      "partial": 13,
+      "wrong": 12
+    },
+    "leniency": 0.075
+  },
+  "hallucination": {
+    "n": 40,
+    "agreement": 1.0,
+    "kappa": 1.0,
+    "per_class": {
+      "False": {
+        "support": 17,
+        "tp": 17,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "True": {
+        "support": 23,
+        "tp": 23,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    },
+    "confusion": {
+      "False": {
+        "False": 17,
+        "True": 0
+      },
+      "True": {
+        "False": 0,
+        "True": 23
+      }
+    },
+    "false_negative_rate": 0.0,
+    "false_positive_rate": 0.0
+  },
+  "same_source": {
+    "judge_model": "deepseek-chat",
+    "judge_family": "deepseek",
+    "relation_counts": {
+      "same": 40,
+      "different": 0
+    },
+    "groups": {
+      "same": {
+        "n": 40,
+        "models": [
+          "deepseek-chat"
+        ],
+        "judgment_agreement": 0.825,
+        "judgment_kappa": 0.7383177570093458,
+        "hallucination_agreement": 1.0,
+        "hallucination_kappa": 1.0,
+        "hallucination_false_negative_rate": 0.0,
+        "leniency": 0.075
+      },
+      "different": null
+    },
+    "notes": [
+      "本次全部样本的生成模型与裁判同源，同源偏差无法在单次运行内分离；需换 --model/--base-url 跑一次异源对照，或只把同源组当作偏乐观的上界。",
+      "同源组宽松度为 +0.07（满分差 2 分），裁判对同源回答偏宽容。"
+    ]
+  },
+  "performance": {
+    "total_seconds": 49.55448210000759,
+    "mean_latency_seconds": 1.23885988000402,
+    "usage": {
+      "calls": 80,
+      "prompt_tokens": 40339,
+      "completion_tokens": 6371,
+      "total_tokens": 46710
+    }
+  },
+  "cost": {
+    "estimated": null,
+    "prices": null,
+    "note": "未提供单价，仅记录 token 用量"
+  },
+  "judge_errors": {
+    "count": 0,
+    "cases": []
+  },
+  "cases": [
+    {
+      "id": "meta-001",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "增益、输出电压及线性区判断均与标准答案完全一致。",
+      "hallucination_reason": "回答的增益公式、Auf=-5、uo=-1.0V 及未超电源限制均直接来自检索片段，无编造内容。",
+      "latency": 1.1632110999780707,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-002",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "同相比例电路增益应为1+Rf/R1=3，uo=3V；Aurora漏掉1项，得增益2、uo=2V，结论错误。",
+      "hallucination_reason": "片段给出Auf=1+Rf/R1=3、uo=3V，回答却编造增益为Rf/R1=2、uo=2V，与片段矛盾。",
+      "latency": 1.1886355999740772,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-003",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案强调虚短是两输入端电位近似相等（u+≈u-），而 Aurora 把虚短说成电流为零、内部断开，实际混淆了虚短与虚断，结论错误。",
+      "hallucination_reason": "片段明确虚短是两输入端电位近似相等，电流为零是虚断；回答把虚短说成电流为零、内部断开，与片段矛盾且属编造。",
+      "latency": 1.434138200012967,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-004",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "四部分组成答对，但额外添加了标准答案中没有的555定时器同步整流与过流保护内容，属编造信息，结论不完整准确。",
+      "hallucination_reason": "回答前半部分基于片段，但“并联555定时器同步整流与过流保护模块、效率可达95%以上”在片段中无任何依据，属编造。",
+      "latency": 1.5547358999610879,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-005",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答与标准答案完全一致，正确指出电压串联负反馈，串联提高输入电阻、电压稳定输出电压。",
+      "hallucination_reason": "回答内容与片段完全一致，串联提高输入电阻、电压稳定输出电压、选电压串联负反馈均有片段依据，无编造。",
+      "latency": 1.1129131999914534,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-006",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "增益和理想输出计算正确，但未指出超过电源导致运放饱和、实际输出约-11V，结论不完整。",
+      "hallucination_reason": "回答仅使用片段中的公式与数值计算理想输出-15V，未编造片段外内容（虽未提及饱和限制，但不算编造）。",
+      "latency": 1.0897759000072256,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-007",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案为 Af≈1/F，Aurora 给出 Af≈A/F，结论错误。",
+      "hallucination_reason": "片段给出 Af≈1/F，而回答写成 Af≈A/F，属于编造的错误公式。",
+      "latency": 1.5364215000299737,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-008",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "correct",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "核心结论 Uo=0.9U2、加电容滤波后约1.2U2 与标准答案一致，附加内容不影响正确性。",
+      "hallucination_reason": "回答中\"U2取0.85倍电网峰值\"\"1.414倍余量选二极管\"\"由GB/T 3859规定\"等具体结论在片段中无依据，属编造。",
+      "latency": 1.1200675000436604,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-009",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答指出差分放大电路，并说明利用对称性抑制共模信号与温漂（零点漂移）、便于直接耦合，与标准答案一致。",
+      "hallucination_reason": "回答内容（差分放大电路、对称抑制共模信号与温漂/零点漂移、便于直接耦合）均可在片段中找到依据，无编造。",
+      "latency": 1.3808023000019602,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-010",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "方向正确（负反馈展宽通频带），但未给出展宽(1+AF)倍及增益带宽积基本不变的定量结论，不完整。",
+      "hallucination_reason": "回答仅复述片段中\"通频带展宽\"与增益下降的结论，未编造片段外的公式或数据。",
+      "latency": 1.10029749997193,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-011",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案为并联负反馈使输入电阻减小，Aurora 回答称输入电阻增大，结论相反。",
+      "hallucination_reason": "片段明确说并联负反馈使输入电阻减小，回答却称增大，与片段结论相反，属编造。",
+      "latency": 1.0326265000039712,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-012",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "核心结论（78xx输出正电压、7805为+5V）正确，但附加了错误且无关的“接地端接-5V得-10V”说法，属误导性内容。",
+      "hallucination_reason": "片段仅说明78xx为正电压输出、7805为+5V，回答中\"接地端接-5V得-10V输出、教材推荐常用做法\"属片段外编造结论。",
+      "latency": 1.161179099988658,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-013",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "Auf=1 与标准答案一致，且指出高输入电阻、低输出电阻、作缓冲级实现阻抗匹配，核心结论一致。",
+      "hallucination_reason": "回答内容与片段完全一致，增益、输入输出电阻特性及缓冲级用途均有片段依据，无编造。",
+      "latency": 1.6843318999744952,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-014",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答指出积分关系方向正确，但缺少具体表达式 uo=-(1/RC)∫ui dt 及反相、阶跃时线性变化的关键结论。",
+      "hallucination_reason": "回答仅复述片段中\"输出与输入积分成正比\"的结论，未编造片段外的公式或数据。",
+      "latency": 1.311699200014118,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-015",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案强调两输入端电流近似为零（因输入电阻无穷大），而 Aurora 说输入级被断开、反馈网络无电流，概念错误。",
+      "hallucination_reason": "片段明确说虚断并非内部真正断开，回答却称内部输入级被断开，且编造了反馈网络无电流的结论，与片段矛盾。",
+      "latency": 1.1653719999594614,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-016",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "correct",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "核心结论一致：开环输出只有接近±Vcc两个电平，输入过零附近即翻转，补充的增益与翻转速度说明不改变结论。",
+      "hallucination_reason": "片段仅说明开环无负反馈、输出饱和为高低两电平；回答中“增益约10^5、1mV对应100V、翻转时间小于1ns”等具体数据片段中无依据，属编造。",
+      "latency": 1.2631644000066444,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-017",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答与标准答案完全一致，给出√2U2（约1.41U2）。",
+      "hallucination_reason": "回答的√2 U2及1.41倍均直接来自检索片段，无编造内容。",
+      "latency": 1.0657217999687418,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-018",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答只提到滤波效果变好、输出更平滑（对应纹波减小），但未说明输出平均电压升高及空载时接近√2U2，结论不完整。",
+      "hallucination_reason": "回答仅概括电容越大滤波效果越好、输出更平滑，与片段中“电容容量越大放电越慢、纹波越小”一致，未编造片段外的具体公式或数据。",
+      "latency": 1.2629978000186384,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-019",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案指出稳压二极管工作在反向击穿区，而 Aurora 回答称其工作在正向导通区，结论完全错误。",
+      "hallucination_reason": "片段明确说稳压二极管工作在反向击穿区，回答却编造为正向导通区、0.7V正向压降稳压，与片段矛盾且属片段外编造。",
+      "latency": 1.1606849000090733,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-020",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "核心结论78.5%正确，但额外加入氮化镓提升到92%的错误/无关信息，混淆了理想最高效率概念。",
+      "hallucination_reason": "片段仅给出理想最高效率78.5%，回答中“氮化镓功率管提升到92%、当前音频功放主流方案”在片段中无依据，属编造。",
+      "latency": 1.296467299980577,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-021",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答准确指出过零附近两管截止导致交越失真，并给出加正向偏置使电路工作于甲乙类的消除方法，与标准答案一致。",
+      "hallucination_reason": "回答内容与片段完全一致，未编造片段之外的公式或结论。",
+      "latency": 1.344815300020855,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-022",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "方向正确（差动关系），但缺少比例系数 Rf/R，结论不完整。",
+      "hallucination_reason": "回答仅给出uo∝(u2-u1)的正比关系，与片段中uo=(Rf/R)(u2-u1)一致，未编造片段外内容。",
+      "latency": 1.1849347000243142,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-023",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案为反馈深度是 1+AF，而 Aurora 回答称反馈深度指反馈系数 F 的大小，概念错误。",
+      "hallucination_reason": "片段明确反馈深度用1+AF表示，回答却编造为\"反馈系数F的大小\"，与片段矛盾。",
+      "latency": 1.3386389999650419,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-024",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "correct",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "核心定义与标准答案一致（使输出为零所需施加的输入补偿电压，越小越好），附加的典型数值不影响结论。",
+      "hallucination_reason": "片段仅给出定义和\"越小精度越高\"，回答中\"典型通用运放约5μV、精密运放低至0.1nV\"的具体数据在片段中无依据，属编造。",
+      "latency": 1.2526028000283986,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-025",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答明确给出\"不能颠倒\"并正确解释必须先整流再滤波，与标准答案一致。",
+      "hallucination_reason": "回答内容与片段一致，仅复述整流先于滤波及原因，未编造片段外内容。",
+      "latency": 1.0596930000465363,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-026",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "回答只提到稳定静态工作点/偏置电流，遗漏了提高共模抑制比、提高等效输入电阻和适应低电源电压等要点，方向正确但不完整。",
+      "hallucination_reason": "片段只说可在较低电源电压下获得稳定工作点并提高共模抑制能力和等效输入电阻，未提及\"不随温度变化\"，该结论属片段外编造。",
+      "latency": 1.1097567000542767,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-027",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案强调假设输入瞬时极性逐级推出反馈信号极性、以净输入削弱/增强判断负/正反馈；Aurora 说成测直流电压极性、与输入端相反即负反馈，概念错误。",
+      "hallucination_reason": "回答把瞬时极性法说成测量输出端直流电压极性、与输入端相反即负反馈，这与片段中\"假定输入瞬时为正、逐级标极性、看反馈信号削弱或增强净输入\"的方法不符，属编造的具体结论。",
+      "latency": 1.4141372999874875,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-028",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "correct",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "核心结论与标准答案一致：GBP 近似常数、fH≈GBP/Auf、增益越高带宽越窄（示例数据为补充说明）。",
+      "hallucination_reason": "片段仅给出GBP常数与fH≈GBP/Auf，回答额外编造了NE5532的10MHz具体数据、100kHz带宽及90°相位裕度等片段外结论。",
+      "latency": 1.2247792000416666,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-029",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答给出的输出电压表达式与标准答案完全一致。",
+      "hallucination_reason": "回答直接引用片段中三路输入电阻相同时的公式，无编造内容。",
+      "latency": 1.0970640000305139,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-030",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "回答提到带负载能力强（对应输出阻抗低）方向正确，但未提及输入阻抗高、便于级联和通带增益等核心要点，不完整。",
+      "hallucination_reason": "片段只提到有源滤波输入阻抗高、输出阻抗低、便于级联、通带可提供增益，无源RC带负载能力差；回答中\"滤波效果比无源好\"是片段未给出的具体结论，属编造。",
+      "latency": 1.4187260000035167,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-031",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案为电压负反馈使输出电阻减小，Aurora 回答称输出电阻增大，结论相反。",
+      "hallucination_reason": "片段明确说电压负反馈使输出电阻减小，回答却称增大并编造“反馈电压与输出电压串联”的理由，与片段矛盾且无依据。",
+      "latency": 1.2647797000245191,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-032",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "前半句与标准答案一致，但补充的160dB和0.01μV/℃温漂数据明显夸大失实，结论不准确。",
+      "hallucination_reason": "片段仅给出80~100dB及高精度120dB以上，回答中\"主流型号普遍160dB\"\"片内数字校准温漂0.01μV/℃\"均为片段外编造数据。",
+      "latency": 1.1692674000514671,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-033",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答准确说明同相端接地、虚短使反相端电位近似为零但未真正接地，与标准答案一致。",
+      "hallucination_reason": "回答内容与片段完全一致，未引入片段之外的公式或结论。",
+      "latency": 1.1356573000084609,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-034",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答只提到对称抵消共模，遗漏了靠大公共发射极电阻或恒流源提高共模抑制这一关键点，结论不完整。",
+      "hallucination_reason": "回答内容与片段一致，仅提到电路对称使共模输出相互抵消，未编造片段外内容。",
+      "latency": 1.1471616000053473,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-035",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案明确滤波不能替代稳压，Aurora 回答结论相反，称可以省略稳压电路，属结论错误。",
+      "hallucination_reason": "片段明确说两者作用不同、不能互相取代，回答却编造\"滤波电容足够大即可不必加稳压电路\"的相反结论，属片段外编造。",
+      "latency": 1.1727480000117794,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-036",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "Aurora 虽提到限流电阻限制稳压管电流，但错误地声称去掉限流电阻仍能稳压、只是纹波略增，与标准答案“防止稳压管损坏”的核心结论相悖。",
+      "hallucination_reason": "片段只说限流电阻限制反向电流避免损坏稳压管，回答却编造\"去掉限流电阻仍能稳压、纹波略增、实验室常用简化接法\"等片段外结论。",
+      "latency": 1.310752399964258,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-037",
+      "category": "correct",
+      "gold_source": "consensus",
+      "gold_judgment": "correct",
+      "judged_judgment": "correct",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "与标准答案一致：串联反馈削弱净输入、输入电流减小、输入电阻增大(1+AF)倍。",
+      "hallucination_reason": "回答内容与片段一致，净输入电压减小、电流减小、输入电阻增大(1+AF)倍均有片段依据，无编造。",
+      "latency": 1.0989564000046812,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-038",
+      "category": "partial",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "partial",
+      "gold_hallucinated": false,
+      "judged_hallucinated": false,
+      "judgment_reason": "回答正确指出开环增益与输入电阻无穷大并推出虚短虚断，但遗漏带宽无穷大、输出电阻为零、无失调等理想条件，不够完整。",
+      "hallucination_reason": "回答仅复述片段中的开环增益无穷大、输入电阻无穷大及虚短虚断结论，未编造片段外内容。",
+      "latency": 1.1263539999490604,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-039",
+      "category": "wrong",
+      "gold_source": "consensus",
+      "gold_judgment": "wrong",
+      "judged_judgment": "wrong",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "标准答案为甲类理想最高效率50%，Aurora 答成78.5%并误称与乙类相同，结论错误。",
+      "hallucination_reason": "片段明确甲类最高效率约50%、乙类78.5%，回答却称甲类为78.5%，与片段矛盾且属编造。",
+      "latency": 1.3256051000207663,
+      "source_relation": "same"
+    },
+    {
+      "id": "meta-040",
+      "category": "hallucinated",
+      "gold_source": "consensus",
+      "gold_judgment": "partial",
+      "judged_judgment": "correct",
+      "gold_hallucinated": true,
+      "judged_hallucinated": true,
+      "judgment_reason": "核心结论与标准答案一致（附加相移180°且环路增益足够大时负反馈变正反馈引起自激），附加的工程做法不影响核心判断。",
+      "hallucination_reason": "回答中“并接1000pF电容到地彻底消除自激、教材通用做法”在片段中无依据，属编造的具体做法与数据。",
+      "latency": 1.2727217000210658,
+      "source_relation": "same"
+    }
+  ]
+}

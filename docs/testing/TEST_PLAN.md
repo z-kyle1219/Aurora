@@ -324,7 +324,7 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 |---|---|---|---|---|---|---|---|---|
 | JUD-UNIT-001 | judge | Unit | 无 tool_call / 坏 JSON | 两份异常响应 | `judge_answer` 默认 `partial`；`judge_hallucination` 默认 `False`；reason 可识别 | 无 | patch `aurora.judge.get_client` | P0 |
 | JUD-UNIT-002 | judge | Unit | 非法枚举/类型收敛 | `judgment="maybe"`；`hallucinated="yes"`；`hallucinated=1` | 非法枚举 → `partial`；非 `bool` → `False` | 无 | fake | P0 |
-| JUD-UNIT-003 | judge | Unit | 字段回填契约 | 正常 `{"judgment":"correct","reason":"…"}` | 返回 `{"judgment": "correct", "reason": "…"}`；幻觉分支返回键为 `hallucinated` 而非 `judgment` | 无 | fake | P1 |
+| JUD-UNIT-003 | judge | Unit | 字段回填与幻觉题干契约 | 正常 `{"judgment":"correct","reason":"…"}`；幻觉裁判传入包含电源参数的原始问题 | 返回字段保持既有结构；幻觉裁判 user message 同时包含原始问题、检索片段和回答，题干参数不得因片段未重复而被误判 | 无 | fake | P1 |
 | EVL-UNIT-001 | eval.py | Unit | 关键词判分边界 | `expected="5V\|5 V"`；答案含"不是 5V"；`answer=None` | 现状：任一子串命中即 True（含否定句假阳性）；`None` 不抛异常返回 False | 无 | 直接导入 `scripts.eval.is_correct` | P1 |
 | EVL-UNIT-002 | eval_report.py | Unit | 引用率/多数投票 | 重复 source、空 hits、投票 2:1 与 1:1 | 命中率 = 命中来源数/片段数（重复来源会重复计数）；`hits=[]` → `None`；平票取先出现值 | 无 | 无 | P1 |
 | EVL-UNIT-003 | eval_report.py | Unit | 汇总分母 | 12 题中 7 道有 hits | 引用率与幻觉率分母为 RAG 题数（7），不是总题数；无 RAG 题时打印"无 RAG 题"且不除零 | 无 | 构造 rows | P1 |

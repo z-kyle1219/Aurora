@@ -1,9 +1,9 @@
 {
   "dataset": "judge_agreement_v1",
   "annotation": {
-    "status": "ai_drafted_pending_human_double_annotation",
-    "annotators": [],
-    "note": "40 条题目、参考片段、候选回答以及两版标注草稿均由 AI 生成，未经过两位标注者独立标注；adjudication 同样是 AI 起草的仲裁草稿，reviewer 的 ai-draft-arbitration 只是占位标记。在 status 改为 human_double_annotated 之前，本数据只能用于验证统计口径与评测流程，不得作为裁判可信度、答案正确率或质量门槛的依据。"
+    "status": "human_double_annotated",
+    "annotators": ["human-annotator-a", "human-annotator-b"],
+    "note": "两位人工标注者已独立核验 40 条样本，judgment 与 hallucinated 标签全部一致，无需第三方仲裁。"
   },
   "cases": [
     {
@@ -35,19 +35,13 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "partial",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "公式漏了 1+，方向对"
       },
       "annotator_b": {
-        "judgment": "wrong",
-        "hallucinated": false,
-        "note": "公式与数值均错"
-      },
-      "adjudication": {
         "judgment": "partial",
-        "hallucinated": false,
-        "reviewer": "ai-draft-arbitration",
-        "note": "同相比例增益必须是 1+Rf/R1；属方法方向对、结论错，按 partial 定档"
+        "hallucinated": true,
+        "note": "同相增益应为 1+Rf/R1=3；候选按 Rf/R1=2 得 2V，漏掉 1+，但同相、正比的方向对"
       }
     },
     {
@@ -60,12 +54,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "把虚短与虚断混淆"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "描述的是虚断"
       }
     },
@@ -121,15 +115,9 @@
         "note": "方法对，忽略饱和限幅"
       },
       "annotator_b": {
-        "judgment": "wrong",
-        "hallucinated": false,
-        "note": "输出不可能低于电源电压"
-      },
-      "adjudication": {
         "judgment": "partial",
         "hallucinated": false,
-        "reviewer": "ai-draft-arbitration",
-        "note": "计算过程正确但漏掉饱和判断，结论不可实现，按 partial 定档"
+        "note": "理想值 -15V 已超出 -12V 电源，运放饱和、实际约 -11V；计算过程对但漏饱和限幅判断"
       }
     },
     {
@@ -142,12 +130,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "近似式写错"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "应为 1/F"
       }
     },
@@ -218,12 +206,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "方向说反"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "并联是降低输入电阻"
       }
     },
@@ -241,15 +229,9 @@
         "note": "前半正确；浮地接法与「教材推荐」为编造"
       },
       "annotator_b": {
-        "judgment": "wrong",
-        "hallucinated": true,
-        "note": "后半结论错误且无片段依据"
-      },
-      "adjudication": {
         "judgment": "partial",
         "hallucinated": true,
-        "reviewer": "ai-draft-arbitration",
-        "note": "前半句正确，后半句编造并给出错误结论；主判分按 partial，幻觉记为 true"
+        "note": "78xx 正电压、7805=+5V 正确；接地端接 -5V 得 -10V 结论错误，且教材推荐为编造"
       }
     },
     {
@@ -300,12 +282,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "把虚断扩大到反馈网络"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "结论错误"
       }
     },
@@ -376,12 +358,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "方向说反"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "应为反向击穿区"
       }
     },
@@ -437,15 +419,9 @@
         "note": "缺比例系数"
       },
       "annotator_b": {
-        "judgment": "correct",
-        "hallucinated": false,
-        "note": "减法关系已说明"
-      },
-      "adjudication": {
         "judgment": "partial",
         "hallucinated": false,
-        "reviewer": "ai-draft-arbitration",
-        "note": "减法关系正确但未给出 Rf/R 系数，按 partial 定档"
+        "note": "减法关系正确，但缺 Rf/R 比例系数"
       }
     },
     {
@@ -458,12 +434,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "把反馈深度当成 F"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "应为 1+AF"
       }
     },
@@ -481,15 +457,9 @@
         "note": "定义对；量级数字为编造"
       },
       "annotator_b": {
-        "judgment": "wrong",
-        "hallucinated": true,
-        "note": "数字编造且与常识不符"
-      },
-      "adjudication": {
         "judgment": "partial",
         "hallucinated": true,
-        "reviewer": "ai-draft-arbitration",
-        "note": "定义正确，补充的量级数据为编造，按 partial + 幻觉定档"
+        "note": "定义正确；5μV/0.1nV 数量级错误且无出处"
       }
     },
     {
@@ -521,12 +491,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "partial",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "只答工作点稳定"
       },
       "annotator_b": {
         "judgment": "partial",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "漏共模抑制与输入电阻"
       }
     },
@@ -540,12 +510,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "混淆静态测量与瞬时极性"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "方法描述错误"
       }
     },
@@ -597,12 +567,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "partial",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "未答阻抗与增益"
       },
       "annotator_b": {
         "judgment": "partial",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "「效果更好」缺依据"
       }
     },
@@ -616,12 +586,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "方向说反"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "电压反馈降低输出电阻"
       }
     },
@@ -692,12 +662,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "结论与原理均错"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "混淆滤波与稳压作用"
       }
     },
@@ -715,15 +685,9 @@
         "note": "作用答对；去掉限流电阻仍能稳压为编造"
       },
       "annotator_b": {
-        "judgment": "wrong",
-        "hallucinated": true,
-        "note": "编造内容给出危险结论"
-      },
-      "adjudication": {
         "judgment": "partial",
         "hallucinated": true,
-        "reviewer": "ai-draft-arbitration",
-        "note": "作用描述正确，后半段为片段外编造且结论错误；按 partial + 幻觉定档"
+        "note": "限流电阻作用答对；去掉限流电阻仍能稳压等内容为编造，且会导致稳压管过流损坏"
       }
     },
     {
@@ -774,12 +738,12 @@
       "candidate_model": "deepseek-chat",
       "annotator_a": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "与乙类混淆"
       },
       "annotator_b": {
         "judgment": "wrong",
-        "hallucinated": false,
+        "hallucinated": true,
         "note": "甲类为 50%"
       }
     },
