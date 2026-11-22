@@ -87,13 +87,17 @@ def test_agt_unit_003__bad_arguments_and_unknown_tool_become_tool_messages(
     fake.assert_exhausted()
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="DEF-07 轮数耗尽返回占位文案而非抛 RuntimeError",
+)
 def test_agt_unit_004__max_rounds_exhaustion_returns_placeholder_with_full_trace(
     monkeypatch, scripted_client_factory, response_factory, message_factory, tool_call_factory
 ):
-    """AGT-UNIT-004①：连续 5 轮只返回 tool_call 时返回占位文案与完整 trace。
+    """AGT-UNIT-004①：轮数耗尽应抛 RuntimeError，而不是把占位文案当正常回答。
 
-    §13-3(a) 未定契约：占位文案与正常成功在返回值上不可区分，此处按现状断言，
-    不得写成成功契约；决策落地后同步改写本断言。
+    TEST_PLAN §13-3 已定案（2026-11-22）：统一抛异常，Pipeline 因此不写回历史。
+    缺陷 DEF-07 修复后本用例转为 XPASS，需删除 xfail 并同步 PIP-INT-005。
     """
     responses = [
         response_factory(
@@ -110,11 +114,9 @@ def test_agt_unit_004__max_rounds_exhaustion_returns_placeholder_with_full_trace
     monkeypatch.setattr(agent, "get_client", lambda: fake)
     monkeypatch.setattr(agent, "execute_tool", lambda name, arguments: "1")
 
-    answer, trace = agent.run_agent("连续计算五轮")
+    with pytest.raises(RuntimeError, match="最大工具调用轮数"):
+        agent.run_agent("连续计算五轮")
 
-    assert answer == "（已达到最大工具调用轮数，仍未得到最终回答）"
-    assert len(trace) == 5
-    assert all(step["result"] == "1" and step["warning"] is None for step in trace)
     assert fake.call_count == 5
     fake.assert_exhausted()
 
@@ -151,22 +153,26 @@ def test_agt_unit_004__empty_response_raises_runtime_error(
     fake.assert_exhausted()
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason="DEF-08 截断但已有内容时按正常回答返回而非抛 RuntimeError",
+)
 def test_agt_unit_004__length_capped_with_partial_content_returns_as_success(
     monkeypatch, scripted_client_factory, response_factory, message_factory
 ):
-    """AGT-UNIT-004④：finish_reason=length 但已有内容时按正常回答返回、trace 为空、无告警。
+    """AGT-UNIT-004④：finish_reason=length 且已有内容时也应抛 RuntimeError。
 
-    §13-3(b) 未定契约：半截答案被当成功，此处按现状断言；决策落地后同步改写本断言。
+    TEST_PLAN §13-3 已定案（2026-11-22）：与②一致按失败处理，不把半截答案当成功。
+    缺陷 DEF-08 修复后本用例转为 XPASS，需删除 xfail。
     """
     fake = scripted_client_factory(
         [response_factory(message_factory(content="…半截"), finish_reason="length")]
     )
     monkeypatch.setattr(agent, "get_client", lambda: fake)
 
-    answer, trace = agent.run_agent("半截输出")
+    with pytest.raises(RuntimeError, match="模型输出达到长度限制"):
+        agent.run_agent("半截输出")
 
-    assert answer == "…半截"
-    assert trace == []
     assert fake.call_count == 1
     fake.assert_exhausted()
 

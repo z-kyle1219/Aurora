@@ -341,7 +341,7 @@ class Session:
 
 - `config.py`：缺少 key 时主动失败。
 - `router.py`：无 tool call、JSON 解析失败和非法标签时回退到 `concept`。
-- `agent.py`：非法工具 JSON 按空参数执行；截断且无内容时抛出 `RuntimeError("模型输出达到长度限制")`，截断但已有内容时按正常回答返回（该行为仍待决策），其他无内容响应抛出 `RuntimeError("模型没有返回有效内容")`。
+- `agent.py`：非法工具 JSON 按空参数执行；截断且无内容时抛出 `RuntimeError("模型输出达到长度限制")`，截断但已有内容时按正常回答返回（已定案为与前者一致抛异常，尚未修复，DEF-08），其他无内容响应抛出 `RuntimeError("模型没有返回有效内容")`；达 `max_rounds` 时返回占位文案（已定案为抛 `RuntimeError`，尚未修复，DEF-07）。
 - `tools.py`：将 `ValueError`、`ZeroDivisionError`、`OverflowError`、`SyntaxError` 与 `TypeError` 统一转换为可返回给模型的 `计算失败：…` 字符串；复数结果、关键字参数、超长表达式与超限幂运算均以 `ValueError` 拒绝，`TypeError`（参数不匹配）不会穿出工具边界。
 - `rewrite.py`：异常、空结果或超过 500 字时回退原问题；正常结果会剥离首尾空白和引号。
 - `rag.py`：空索引时返回提示文本。
@@ -355,7 +355,7 @@ class Session:
 
 ## 12. 测试与评测现状
 
-仓库已建立 pytest 阶段 0 基础设施、阶段 1 纯逻辑用例与阶段 2 协议失败路径用例：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及 `tools` / `chunker` / `card_loader` / `vector_store` / `session` / `config` / `router` / `rewrite` / `judge` / `agent` 的单元与集成用例。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；阶段 3 及之后尚未整阶段建立，部分后续阶段用例因缺陷验证提前完成；E2E 与 CI 仍未建立。当前判定、例外及证据入口以 `docs/testing/TEST_STATUS.md` 为准。
+仓库已建立 pytest 阶段 0 基础设施、阶段 1 纯逻辑用例、阶段 2 协议失败路径用例与阶段 3 编排/多轮集成用例：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及 `tools` / `chunker` / `card_loader` / `vector_store` / `session` / `config` / `router` / `rewrite` / `judge` / `agent` 的单元用例和 `agent→tools` / `rag` / `pipeline` / `session/multi-turn` 的集成用例。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；阶段 4 离线 E2E 与 CI 仍未建立，部分后续阶段用例因缺陷验证提前完成。当前判定、例外及证据入口以 `docs/testing/TEST_STATUS.md` 为准。
 
 ### 12.1 快速评测
 
@@ -395,7 +395,7 @@ class Session:
 
 ### 13.2 可选参数与实际前置条件不一致
 
-`pipeline.run()` 将 `store` 标注为 `VectorStore | None`，但 `feedback`、`power` 或 `concept` 分支会把它直接传入 `ask_rag()`。当 `store=None` 且 Router 选择 RAG 分支时，检索会访问 `None.search()` 并失败。
+`pipeline.run()` 将 `store` 标注为 `VectorStore | None`，但 `feedback`、`power` 或 `concept` 分支会把它直接传入 `ask_rag()`。当 `store=None` 且 Router 选择 RAG 分支时，检索会访问 `None.search()` 并失败（已定案为进入 RAG 分支前抛显式 `ValueError`，尚未修复，DEF-05）。
 
 ### 13.3 外部调用的可靠性边界
 
@@ -441,7 +441,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - 多轮问题改写。
 - 固定降级回答。
 - 脚本式分类、答案、幻觉、引用和延迟评测。
-- 阶段 0/1/2 离线 pytest 套件（当前判定与证据入口见 `docs/testing/TEST_STATUS.md`）。
+- 阶段 0/1/2/3 离线 pytest 套件（当前判定与证据入口见 `docs/testing/TEST_STATUS.md`）。
 
 ### 未实现
 
@@ -450,7 +450,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - Session 持久化、隔离和并发管理。
 - 日志、监控、统一异常响应和调用重试。
 - 相似度阈值、混合检索和 rerank。
-- CI 自动执行；阶段 3 及之后尚未整阶段建立的编排与 E2E 用例（部分用例提前完成，见 `docs/testing/TEST_STATUS.md`）。
+- CI 自动执行；阶段 4 离线 E2E 与 AI Evaluation 尚未整阶段建立（部分用例提前完成，见 `docs/testing/TEST_STATUS.md`）。
 - 通用工具注册、外部工具和并行工具执行。
 
 ### 未知

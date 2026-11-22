@@ -73,7 +73,7 @@
 
 - 抛异常发生在写回之前 → Session 长度不变（`rewrite.py` 的异常在内部已吞掉，不中断）。
 
-- **但**还有两类"假成功"写回路径：`ask_rag()` 在 `content is None` 时返回 `None`、`run_agent()` 达 `max_rounds` 返回占位文案。二者属**未定契约**（非已登记缺陷），见 §10 第 1 行与 §13 第 2、3 条，断言见 §6.6 `RAG-INT-005` 与 §6.9 `PIP-INT-005`。
+- **但**还有两类"假成功"写回路径：`ask_rag()` 在 `content is None` 时返回 `None`、`run_agent()` 达 `max_rounds` 返回占位文案。处置已于 2026-11-22 定案（§13 第 2、3 条：都改为写回前的明确异常），现登记为缺陷 DEF-06、DEF-07，断言见 §6.6 `RAG-INT-005` 与 §6.9 `PIP-INT-005`。
 
 - 空索引时 `ask_rag()` 返回"课件库还是空的…"字符串，同样被当作正常答案写回；是否保留该降级写回待决策，见 §13 第 13 条。
 
@@ -134,7 +134,7 @@ P0 里有若干用例，其"当前行为"本身就是缺陷（`content=None` 被
 
 | 类型 | 断言什么 | pytest 写法 | 适用用例 |
 |---|---|---|---|
-| **A. 缺陷定标** | 断言**正确行为**（缺陷存在时必然失败） | `@pytest.mark.xfail(strict=True, reason="DEF-xx 缺陷描述")` | RTR-UNIT-005、RTR-UNIT-006、RAG-INT-004、RAG-INT-005、PIP-INT-005 |
+| **A. 缺陷定标** | 断言**正确行为**（缺陷存在时必然失败） | `@pytest.mark.xfail(strict=True, reason="DEF-xx 缺陷描述")` | RTR-UNIT-005、RTR-UNIT-006、RAG-INT-004、RAG-INT-005、PIP-INT-005、AGT-UNIT-004①④ |
 | **B. 现状锁定** | 断言**当前行为**（含错误值），并注明修复时同步改断言 | 普通 `assert` + `# 修复 DEF-xx 后改此断言` | TOL-UNIT-004（`:g` 精度）、VST-UNIT-002（负 k）、CHK-UNIT-001（全角清洗）、SES-UNIT-002（返回内部 list） |
 
 不用 `skip` 的理由：`skip` 会让缺陷永久沉默；`xfail(strict=True)` 在缺陷修复后转为 `XPASS` 并**直接报错**，强制作者回来删标记，缺陷不会在修复后继续"假装红着"。
@@ -251,8 +251,8 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 | RAG-INT-001 | rag | Integration | query 与生成输入隔离 | `question="那 R1 换成 20k 呢"`、`query="反相比例电路 R1=20k 求 uo"`、含 history | `encode_query` 收到 query；user 消息含原问题与全部片段；history 顺序为 system→history→user；history 未被原地修改 | VectorStore 真、Embedding/LLM 假 | patch `aurora.rag.encode_query` 与 `get_client` | P0 |
 | RAG-INT-002 | rag | Integration | 自定义提示词生效 | `system_prompt="X"` / `None` | 分别使用 `"X"` 与 `RAG_SYSTEM_PROMPT`；`temperature=0.3` | 同上 | 同上 | P0 |
 | RAG-INT-003 | rag | Integration | top_k 透传 | `top_k=1` / `5` / `0` | 传入 `store.search` 的 k 与返回值长度一致；`k=0` → 空 hits → 走"课件库还是空的"分支 | VectorStore | 假 encoder 返回固定向量 | P1 |
-| RAG-INT-004 | rag→pipeline | Integration | `store=None` 的真实失败面 | Router 判 `concept`，`run(question, None)` | 现状：`retrieve(None, ...)` → `None.search` → `AttributeError`，Session 不写回。属**已知契约风险**，需决策后固定 | pipeline | patch Router，其余真实 | P0 |
-| RAG-INT-005 | rag→session | Integration | `content=None` 污染多轮状态 | fake 生成响应 `content=None` | 现状：`answer=None` 被 `add_turn` 写入，`len(session)==2` 且第二条 `content is None`。目标：抛明确异常且长度不变 | pipeline、session | patch Router + `aurora.rag.get_client` | P0 |
+| RAG-INT-004 | rag→pipeline | Integration | `store=None` 的真实失败面 | Router 判 `concept`，`run(question, None)` | 已定案（2026-11-22，§13 第 1 条）：进入 RAG 分支前显式抛 `ValueError`（消息含 `VectorStore`），不调用 `None.search`，Session 不写回。现状仍为 `AttributeError` → DEF-05，`xfail(strict=True)` 定标 | pipeline | patch Router，其余真实 | P0 |
+| RAG-INT-005 | rag→session | Integration | `content=None` 污染多轮状态 | fake 生成响应 `content=None` | 已定案（§13 第 2 条）：抛 `RuntimeError("模型没有返回有效内容")`，Session 长度不变。现状把 `answer=None` 写入（`len(session)==2`、第二条 `content is None`）→ DEF-06，`xfail(strict=True)` 定标 | pipeline、session | patch Router + `aurora.rag.get_client` | P0 |
 | RAG-INT-006 | rag | Integration | 检索分数非归一化风险 | 未归一化向量入库 | 点积不再等于余弦；记录该前置条件必须在 `embedder` 侧保证 | NumPy | 无 | P2 |
 | RAG-AI-001 | retrieval | AI Eval | 检索质量 | 标注 `query → 相关 chunk/source`，含"无答案"题 | 报告 Recall@1/3/5、MRR、nDCG@5；"无答案误检率"单列；固定索引版本与 hash | 真实 BGE + 冻结索引 | 不 Mock | P0 |
 | RAG-AI-002 | generation | AI Eval | 正确性/忠实度/引用 | concept/feedback/power 代表题 + 片段不足的对抗题 | 报告答案正确率、faithfulness、诚实拒答率、citation precision/recall | 真实 LLM | 不 Mock；规则校验 + 人工抽检 | P0 |
@@ -281,11 +281,11 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 | AGT-UNIT-001 | agent | Unit | 单轮工具 + 终答 | 第 1 次返回 1 个 tool_call，第 2 次返回 `content` | 返回 `(content, trace)`；messages 顺序 `system→user→assistant(tool_calls)→tool`；trace 长度 1 | 无 | scripted fake | P0 |
 | AGT-UNIT-002 | agent | Unit | 一次多个 tool_calls | 单次返回 2 个 tool_call | 生成 2 条 `tool` 消息且 `tool_call_id` 各自对应；trace 顺序与调用一致 | 无 | scripted fake | P0 |
 | AGT-UNIT-003 | agent | Unit | 坏参数与未知工具 | `arguments="{oops"`；`name="unknown_tool"` | 坏 JSON 变 `{}` → 工具返回"缺少字符串参数"；未知工具返回"未知工具"字符串；均作为 `tool` 消息回传，不抛异常 | tools | scripted fake | P0 |
-| AGT-UNIT-004 | agent | Unit | 终止与异常 | ①连续 5 轮只返回 tool_call ②`finish_reason="length"` 且无内容 ③无 tool_call 且 `content=None` 且 `finish_reason="stop"` ④`finish_reason="length"` 且 `content="…半截"` | ① 返回占位文案 + 完整 trace（**当前被当成功**）② `RuntimeError("模型输出达到长度限制")` ③ `RuntimeError("模型没有返回有效内容")` ④ 按正常回答返回半截内容、trace 正常、无告警（**当前被当成功**，待 §13 第 3 条决策） | ④ 的期望随 §13 第 3 条结论改写 | scripted fake | P0 |
+| AGT-UNIT-004 | agent | Unit | 终止与异常 | ①连续 5 轮只返回 tool_call ②`finish_reason="length"` 且无内容 ③无 tool_call 且 `content=None` 且 `finish_reason="stop"` ④`finish_reason="length"` 且 `content="…半截"` | ① 目标抛 `RuntimeError`（消息含「最大工具调用轮数」）；现状返回占位文案 + 完整 trace → DEF-07 ② `RuntimeError("模型输出达到长度限制")` ③ `RuntimeError("模型没有返回有效内容")` ④ 目标抛 `RuntimeError("模型输出达到长度限制")`；现状按正常回答返回半截内容 → DEF-08。①④ 已按 §13 第 3 条定案，`xfail(strict=True)` 定标 | 无 | scripted fake | P0 |
 | AGT-UNIT-005 | agent | Unit | validator 挂载与消息拼装 | `validators={"calculate_expression": f}`，f 返回 `"WARN"` | `tool` 消息内容为 `"<result>\n[合理性校验] WARN"`；trace 同时含 `result` 与 `warning`；无 validator 时内容仅为 `result` | 无 | scripted fake + 直接调用 | P0 |
 | AGT-UNIT-006 | agent | Unit | history 只接受纯文本 | `history` 含 `tool` 角色消息 | 现状：原样 `extend` 进 messages，不做过滤 → 记录为契约风险（应由调用方保证） | 无 | scripted fake 记录 messages | P2 |
 | AGT-INT-001 | agent→tools | Integration | 真实执行 + 校验回传 | 假 LLM 先请求 `-(100/10)*(-3)`，再出终答 | trace: `result="30"`、`warning` 含"钳位在 +15V"；第 2 次请求的末条 `tool` 消息含该警告 | 真实 tools | 只 patch `aurora.agent.get_client` | P0 |
-| AGT-INT-002 | agent→tools | Integration | 中间量误触发电压校验 | 先 `100000*3`，再 `0.5*10` | 现状：**每次** `calculate_expression` 都跑 validator，第 1 步就产生"饱和"警告 → 需决策"只校验最终输出"或"取消按工具名自动校验" | 真实 tools | scripted fake 捕获每轮消息 | P0 |
+| AGT-INT-002 | agent→tools | Integration | 中间量误触发电压校验 | 先 `100000*3`，再 `0.5*10` | 已定案（2026-11-22，§13 第 4 条）：暂按现状锁定——**每次** `calculate_expression` 都跑 validator，第 1 步即产生"饱和"警告；作为已知风险记录，不写成成功契约。改为「只校验最终输出」或「取消按工具名自动校验」需另立任务 | 真实 tools | scripted fake 捕获每轮消息 | P0 |
 | AGT-INT-003 | agent→tools | Integration | 工具异常不外溢 | 假 LLM 请求 `(-8)**(1/3)` | 非实数运算错误不外溢：以 `tool` 消息与 trace 回传，Agent 继续下一轮并返回最终回答 | 真实 tools | scripted fake | P0 |
 
 ### 6.9 Pipeline 编排与端到端
@@ -298,7 +298,7 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 | PIP-INT-002 | pipeline | Integration | 下游异常传播且不写回 | ①`route` 抛错 ②`run_agent` 抛错 ③`ask_rag` 抛错 ④`rewrite` 抛错 | ①②③ 异常向上传播且 `len(session)==0`；④ 回退原问题并继续执行 | 下游替身 | 参数化 patch | P0 |
 | PIP-INT-003 | pipeline | Integration | fallback 零外部调用 | Router 固定 `fallback` | `run_agent`/`ask_rag` **未被调用**（哨兵）；`trace=hits=None` | 无 | 哨兵替身 | P0 |
 | PIP-INT-004 | pipeline | Integration | 临时 Session 无跨调用泄漏 | 连续两次 `run(q, store)` 不传 session | 两次的 `history` 均为 `[]`；无全局可变状态 | pipeline | patch 能力函数捕获 `history` | P0 |
-| PIP-INT-005 | pipeline | Integration | 轮数耗尽被当成功 | opamp 分支 fake LLM 5 轮都只调工具 | 现状：占位文案写入 Session，`answer` 与正常答案无法区分 → 目标：抛明确异常或返回可识别失败标记，Session 不变 | agent、session | scripted fake | P0 |
+| PIP-INT-005 | pipeline | Integration | 轮数耗尽被当成功 | opamp 分支 fake LLM 5 轮都只调工具 | 已定案（2026-11-22，§13 第 3 条）：`run_agent` 抛 `RuntimeError`（消息含「最大工具调用轮数」），Pipeline 不写回，Session 长度不变。现状占位文案写入 Session、`answer` 与正常答案无法区分 → DEF-07，`xfail(strict=True)` 定标 | agent、session | scripted fake | P0 |
 | PIP-E2E-001 | pipeline | E2E | 离线五类冒烟 | 5 个代表问题 + 3 个二维向量的小索引 + scripted LLM | 每类命中正确分支；返回 schema 与 `demo_*.py` 的消费方式兼容；Session 各 +2 | 全链 | 统一 fake，不联网 | P0 |
 | PIP-E2E-002 | pipeline | E2E | 空索引全链 | 空 `VectorStore` + concept 路由 | 返回"课件库还是空的…"，`hits==[]`，Session +2（**该降级文案会进历史**，待决策，见 §13 第 13 条） | 全链 | fake | P1 |
 | PIP-E2E-003 | pipeline | E2E | 在线冒烟（少量） | 五类各 1 题 + 1 个多轮剧本 | 请求成功、schema 完整、无未处理协议错误；**不判质量** | DeepSeek、BGE、真实索引 | 不 Mock，手动/定时 | P1 |
@@ -521,15 +521,25 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 
 ---
 
-## 13. 尚未确认的问题与风险（需你决策）
+## 13. 产品契约决策与剩余风险
+
+> 第 1–4 条已于 2026-11-22 定案（保留决策依据）；第 5–13 条仍待确认。
 
 1. **`store=None` 且路由到 RAG 分支**：继续抛 `AttributeError`（视为开发错误），还是返回可识别降级文案？无论哪种，都不应直接调 `None.search()`。
 
+   **已定案**：显式抛 `ValueError`（消息含 `VectorStore`），不调用 `None.search`，Session 不写回；缺陷 DEF-05，断言见 §6.6 `RAG-INT-004`。
+
 2. **RAG `content=None`**：抛异常、返回空串、还是降级文案？当前会写入历史并污染下一轮。
 
-3. **`run_agent()` 失败路径契约**：同一函数现有三个出口语义不一致，需统一定调——(a) 达 `max_rounds` 返回占位文案（`agent.py:130`）、`trace` 正常返回，`pipeline.run()` 读不到区别；(b) `finish_reason="length"` 但已生成部分内容时按正常回答返回（`elif msg.content` 先于 `finish_reason` 判断），半截答案被当成功；(c) 无内容 / 空响应抛 `RuntimeError`，属无降级的硬失败。候选方案：① 统一抛明确异常（`(str, list)` 契约不变，但调用方需处理新异常：`pipeline.py:132`、`scripts/demo_tools.py:48`，以及经 `pipeline.run()` 拿 trace 的 `demo_router.py:41-46`、`demo_multi_turn.py:57-62`）；② 返回值携带结构化状态（影响同上，且改动更大）；③ 保留 `(str, list)`，在 `trace` 末尾追加终止标记（如 `{"status": "max_rounds_exhausted"}`），`pipeline.run()` 读到标记后再决定是否 `add_turn()`。③ 免改签名，但仍要动六个消费点：`agent.py:130` 追加标记；`pipeline.py:132` 起读取标记并决定写回；`scripts/demo_tools.py:52-56`、`demo_router.py:43-46`、`demo_multi_turn.py:59-62` 三处同模式，`step['tool']` / `step["warning"]` 需改 `.get()`（标记条目无这些键，会 `KeyError`）；`tests/integration/test_agent_tools.py:35-42` 的 trace 精确等值断言（多一条即变红），并同步 `AGT-UNIT-004` 期望。③ 与 ① 都能覆盖 (a)(b)，区别在代价性质：① 把「半截答案」换成异常，用户拿不到已算出的部分结果，且四处调用方都要加 `try/except`；③ 保留可读结果、由下游识别标记，改动更多但都是机械的 `.get()` 与分支。决策前按现状断言，不得把 (a)(b) 写成成功契约。
+   **已定案**：抛 `RuntimeError("模型没有返回有效内容")`，在写回前中断，Session 长度不变；缺陷 DEF-06，断言见 §6.6 `RAG-INT-005`。
+
+3. **`run_agent()` 失败路径契约**：同一函数现有三个出口语义不一致，需统一定调——(a) 达 `max_rounds` 返回占位文案（`agent.py:130`）、`trace` 正常返回，`pipeline.run()` 读不到区别；(b) `finish_reason="length"` 但已生成部分内容时按正常回答返回（`elif msg.content` 先于 `finish_reason` 判断），半截答案被当成功；(c) 无内容 / 空响应抛 `RuntimeError`，属无降级的硬失败。
+
+   **已定案**：采用方案①——(a) 与 (b) 统一抛 `RuntimeError`（(a) 消息含「最大工具调用轮数」，(b) 复用「模型输出达到长度限制」），`pipeline.run()` 因异常在写回前而不写入历史；缺陷 DEF-07、DEF-08，断言见 §6.8 `AGT-UNIT-004`、§6.9 `PIP-INT-005`。以下为决策时的候选与代价分析，保留备查。候选方案：① 统一抛明确异常（`(str, list)` 契约不变，但调用方需处理新异常：`pipeline.py:132`、`scripts/demo_tools.py:48`，以及经 `pipeline.run()` 拿 trace 的 `demo_router.py:41-46`、`demo_multi_turn.py:57-62`）；② 返回值携带结构化状态（影响同上，且改动更大）；③ 保留 `(str, list)`，在 `trace` 末尾追加终止标记（如 `{"status": "max_rounds_exhausted"}`），`pipeline.run()` 读到标记后再决定是否 `add_turn()`。③ 免改签名，但仍要动六个消费点：`agent.py:130` 追加标记；`pipeline.py:132` 起读取标记并决定写回；`scripts/demo_tools.py:52-56`、`demo_router.py:43-46`、`demo_multi_turn.py:59-62` 三处同模式，`step['tool']` / `step["warning"]` 需改 `.get()`（标记条目无这些键，会 `KeyError`）；`tests/integration/test_agent_tools.py:35-42` 的 trace 精确等值断言（多一条即变红），并同步 `AGT-UNIT-004` 期望。③ 与 ① 都能覆盖 (a)(b)，区别在代价性质：① 把「半截答案」换成异常，用户拿不到已算出的部分结果，且四处调用方都要加 `try/except`；③ 保留可读结果、由下游识别标记，改动更多但都是机械的 `.get()` 与分支。
 
 4. **validator 语义**：只校验"最终输出"需要标识最终值；当前按工具名挂载导致中间量误报。是加"最终值"标记、拆专用工具，还是取消自动电压校验？仅改文案不解决问题。
+
+   **已定案**：暂按现状锁定——保留「每次 `calculate_expression` 都校验」，作为已知风险记录，不写成成功契约；断言见 §6.8 `AGT-INT-002`。改造方案另立任务。
 
 5. **`execute_tool` 精度**：`:g` 六位有效数字是否可接受？改成 `repr(value)` 会改变模型看到的字符串与既有 demo 输出。
 
