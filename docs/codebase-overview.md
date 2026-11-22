@@ -355,7 +355,7 @@ class Session:
 
 ## 12. 测试与评测现状
 
-仓库已建立 pytest 阶段 0 基础设施、阶段 1 纯逻辑用例、阶段 2 协议失败路径用例、阶段 3 编排/多轮集成用例与阶段 4 离线 E2E：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及单元、集成、五分支 Pipeline 和三轮 Session 闭环测试。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；AI Evaluation 与 CI 仍未建立。当前判定、例外及证据入口以 `docs/testing/TEST_STATUS.md` 为准。
+仓库已建立 pytest 阶段 0 基础设施、阶段 1 纯逻辑用例、阶段 2 协议失败路径用例、阶段 3 编排/多轮集成用例与阶段 4 离线 E2E：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及单元、集成、五分支 Pipeline 和三轮 Session 闭环测试。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；AI Evaluation 只建立了裁判元评估（`EVL-META-001`）的实现，尚未在线执行，其余评估作业未建立；CI 仍未建立。当前判定、例外及证据入口以 `docs/testing/TEST_STATUS.md` 为准。
 
 ### 12.1 快速评测
 
@@ -381,7 +381,16 @@ class Session:
 
 生成模型与裁判默认复用同一个 DeepSeek 模型，因此评测结论存在同源模型偏差。评测还依赖真实 API、可加载的本地 embedding 模型和已构建索引，结果不具备完全离线和确定性。脚本只将报告打印到终端，当前仓库没有保存历史评测报告产物。
 
-### 12.3 当前测试结论
+### 12.3 裁判元评估（EVL-META-001）
+
+`src/aurora/judge_meta.py` 与 `scripts/eval_judge_meta.py` 让裁判去判一批带双标标注的样本（当前为 AI 起草的草稿标注），衡量的是**裁判本身**而不是助教：
+
+- 数据集 `data/eval/meta/judge_agreement_v1.json`：40 条，`correct/partial/wrong/hallucinated` 各 10 条，每条含问题、参考片段、被评回答与两版标签，不一致的 6 条带仲裁（gold 取仲裁结果）。**当前 `annotation.status` 为 `ai_drafted_pending_human_double_annotation`：两版标签与仲裁都是 AI 起草的草稿，没有两位标注者独立标注**，只能用于验证统计口径与流程。
+- 输出 agreement、Cohen's κ、各类 precision/recall/F1 与混淆矩阵；幻觉二分类单独一套；同源偏差按「裁判模型家族 vs 回答生成模型」分组，单列一致性、宽松度与幻觉漏报率。
+- 所有指标都对照 gold：人工双标完成后是人工仲裁结果，草稿状态下是草稿标签，报告会按 `annotation.status` 切换措辞（「裁判 vs 人工 gold」或「裁判 vs 草稿 gold」）。不设任何质量百分比门槛，只出报告与需人工复核的样本清单。
+- 在线入口要求显式 `online` + `ai_eval` marker 与进程环境中的 API key，脚本不读取 `.env`；`--validate-only` 可离线校验数据集格式。标注状态不为 `human_double_annotated` 时，在线用例直接失败、脚本默认拒绝执行（`--allow-draft-labels` 仅用于链路验证），报告自身也会标注「不可引用」。统计口径由 `EVL-UNIT-004`~`EVL-UNIT-008` 离线保护。
+
+### 12.4 当前测试结论
 
 测试当前判定与证据入口以 `docs/testing/TEST_STATUS.md` 为准，具体执行读数保留在其指向的 run 中，覆盖缺口见 `docs/testing/TEST_PLAN.md` §10。本文不复述通过数量，避免重复维护。
 

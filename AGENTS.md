@@ -23,7 +23,7 @@ Aurora 是面向《模拟电子技术》课程的 Python 智能助教原型。�
 - `agent.py` 与 `tools.py` 负责 Tool Use、执行回环和物理校验。
 - `session.py` 负责进程内对话历史。
 - `chunker.py`、`card_loader.py`、`embedder.py`、`vector_store.py` 负责知识入库与检索数据层。
-- `judge.py` 与 `scripts/eval*.py` 负责评测，不属于在线回答主链。
+- `judge.py`、`judge_meta.py` 与 `scripts/eval*.py` 负责评测，不属于在线回答主链；`judge_meta.py` 只做裁判与人工标签的一致性统计，不设质量门槛。
 
 ## 2. 文档阅读规则
 

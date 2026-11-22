@@ -1,0 +1,806 @@
+{
+  "dataset": "judge_agreement_v1",
+  "annotation": {
+    "status": "ai_drafted_pending_human_double_annotation",
+    "annotators": [],
+    "note": "40 条题目、参考片段、候选回答以及两版标注草稿均由 AI 生成，未经过两位标注者独立标注；adjudication 同样是 AI 起草的仲裁草稿，reviewer 的 ai-draft-arbitration 只是占位标记。在 status 改为 human_double_annotated 之前，本数据只能用于验证统计口径与评测流程，不得作为裁判可信度、答案正确率或质量门槛的依据。"
+  },
+  "cases": [
+    {
+      "id": "meta-001",
+      "category": "correct",
+      "question": "反相比例运算电路 R1=10kΩ、Rf=50kΩ、ui=0.2V，电源 ±15V，求 uo。",
+      "reference_answer": "Auf=-Rf/R1=-5，uo=-5×0.2V=-1.0V；未超出 ±15V，运放工作在线性区。",
+      "reference_context": "反相比例运算电路的电压增益 Auf=-Rf/R1，输出与输入反相。输出电压受电源限制，不会超过饱和值。例：R1=10kΩ、Rf=50kΩ、ui=0.2V 时 Auf=-5，uo=-1.0V。",
+      "candidate_answer": "反相比例电路的增益 Auf=-Rf/R1=-5，因此 uo=-5×0.2V=-1.0V。该值在 ±15V 以内，运放工作在线性区。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-002",
+      "category": "partial",
+      "question": "同相比例运算电路 R1=10kΩ、Rf=20kΩ、ui=1V，求 uo。",
+      "reference_answer": "Auf=1+Rf/R1=3，uo=3V，输出与输入同相。",
+      "reference_context": "同相比例运算电路的电压增益 Auf=1+Rf/R1，输出与输入同相。例：R1=10kΩ、Rf=20kΩ、ui=1V 时 Auf=3，uo=3V。",
+      "candidate_answer": "同相比例电路的增益为 Rf/R1=2，因此 uo=2V，输出与输入同相。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "公式漏了 1+，方向对"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "公式与数值均错"
+      },
+      "adjudication": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "reviewer": "ai-draft-arbitration",
+        "note": "同相比例增益必须是 1+Rf/R1；属方法方向对、结论错，按 partial 定档"
+      }
+    },
+    {
+      "id": "meta-003",
+      "category": "wrong",
+      "question": "运放的「虚短」指两个输入端之间呈现什么关系？",
+      "reference_answer": "两输入端电位近似相等（u+≈u-），是深度负反馈下的近似，并非真正短路。",
+      "reference_context": "理想运放工作在线性区时，两输入端电位近似相等，称为虚短；两输入端电流近似为零，称为虚断。虚短只是电位近似相等，并非真正短路。",
+      "candidate_answer": "虚短是指两个输入端之间电流为零，相当于内部断开。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "把虚短与虚断混淆"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "描述的是虚断"
+      }
+    },
+    {
+      "id": "meta-004",
+      "category": "hallucinated",
+      "question": "直流稳压电源由哪几个基本部分组成？",
+      "reference_answer": "由变压器、整流、滤波、稳压四部分组成，依次完成变压、整流、滤波和稳压。",
+      "reference_context": "直流稳压电源一般由电源变压器、整流电路、滤波电路和稳压电路四部分组成。变压器把电网电压变换为合适数值，整流把交流变为脉动直流，滤波减小脉动，稳压使输出在电网波动和负载变化时保持稳定。",
+      "candidate_answer": "由变压器、整流、滤波、稳压四部分组成。另外，为提高效率，教材要求在这一级并联 555 定时器构成的同步整流与过流保护模块，使整机效率可达 95% 以上。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "四部分组成正确；555 同步整流与 95% 效率为片段外编造"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "结论对，但效率数字无出处"
+      }
+    },
+    {
+      "id": "meta-005",
+      "category": "correct",
+      "question": "某测量仪表要求输入电阻高、输出电压稳定，应选用哪种负反馈组态？",
+      "reference_answer": "电压串联负反馈：串联提高输入电阻，电压稳定输出电压。",
+      "reference_context": "串联负反馈提高输入电阻，并联负反馈降低输入电阻；电压负反馈稳定输出电压，电流负反馈稳定输出电流。要求输入电阻高、输出电压稳定时应引入电压串联负反馈。",
+      "candidate_answer": "应选用电压串联负反馈：串联反馈提高输入电阻，电压反馈稳定输出电压。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-006",
+      "category": "partial",
+      "question": "反相比例电路 R1=10kΩ、Rf=30kΩ、ui=5V，电源 ±12V，求 uo。",
+      "reference_answer": "理想值 uo=-15V 超过电源，运放饱和，实际输出约 -11V。",
+      "reference_context": "反相比例运算电路 Auf=-Rf/R1。按公式算出的理想值超过电源电压时，运放进入饱和，输出被限制在饱和值附近。例：R1=10kΩ、Rf=30kΩ、ui=5V 时理想 uo=-15V，已超过 -12V 电源，实际输出约 -11V。",
+      "candidate_answer": "Auf=-Rf/R1=-3，uo=-3×5V=-15V。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "方法对，忽略饱和限幅"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "输出不可能低于电源电压"
+      },
+      "adjudication": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "reviewer": "ai-draft-arbitration",
+        "note": "计算过程正确但漏掉饱和判断，结论不可实现，按 partial 定档"
+      }
+    },
+    {
+      "id": "meta-007",
+      "category": "wrong",
+      "question": "深度负反馈条件下，闭环增益的近似表达式是什么？",
+      "reference_answer": "Af≈1/F，即闭环增益近似等于反馈系数的倒数。",
+      "reference_context": "负反馈放大电路闭环增益 Af=A/(1+AF)，AF 为环路增益。1+AF≫1 时进入深度负反馈，Af≈1/F，只由反馈网络决定，与开环增益基本无关。",
+      "candidate_answer": "深度负反馈时 1+AF≫1，所以 Af≈A/F。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "近似式写错"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "应为 1/F"
+      }
+    },
+    {
+      "id": "meta-008",
+      "category": "hallucinated",
+      "question": "单相桥式整流电路中，输出直流电压平均值与变压器二次电压有效值 U2 的关系是什么？",
+      "reference_answer": "Uo(AV)=0.9U2；加电容滤波后约为 1.2U2。",
+      "reference_context": "单相桥式整流电路输出直流电压平均值 Uo(AV)=0.9U2，二极管承受的最大反向电压为 √2 U2。加电容滤波后输出约为 1.2U2。",
+      "candidate_answer": "桥式整流输出平均电压 Uo=0.9U2，加电容滤波后约 1.2U2。工程上还规定 U2 应取 0.85 倍电网峰值，并按 1.414 倍余量选二极管，这一系数由 GB/T 3859 规定。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "主结论对；标准号与系数为编造"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "多出的工程规定片段中没有依据"
+      }
+    },
+    {
+      "id": "meta-009",
+      "category": "correct",
+      "question": "集成运放的输入级通常采用什么电路结构？为什么？",
+      "reference_answer": "差分放大电路；利用对称性抑制共模信号与零点漂移，便于直接耦合。",
+      "reference_context": "集成运放的输入级普遍采用差分放大电路。差分结构两侧对称，能有效抑制共模信号和零点漂移，并便于直接耦合。",
+      "candidate_answer": "采用差分放大电路，靠两侧对称抑制共模信号和温漂，并便于直接耦合。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-010",
+      "category": "partial",
+      "question": "引入负反馈后，放大电路的通频带如何变化？",
+      "reference_answer": "通频带展宽约 (1+AF) 倍，增益带宽积基本不变。",
+      "reference_context": "负反馈使闭环增益降为 A/(1+AF)，同时通频带展宽为原来的 (1+AF) 倍，增益带宽积近似不变。",
+      "candidate_answer": "负反馈使通频带变宽，因为增益下降了。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "方向对，未给倍数关系"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "缺 (1+AF) 与增益带宽积"
+      }
+    },
+    {
+      "id": "meta-011",
+      "category": "wrong",
+      "question": "并联负反馈对放大电路的输入电阻有什么影响？",
+      "reference_answer": "并联负反馈使输入电阻减小。",
+      "reference_context": "串联负反馈使输入电阻增大，并联负反馈使输入电阻减小；电压负反馈使输出电阻减小，电流负反馈使输出电阻增大。",
+      "candidate_answer": "并联负反馈使输入电阻增大，因为反馈信号与输入信号在输入端并联叠加。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "方向说反"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "并联是降低输入电阻"
+      }
+    },
+    {
+      "id": "meta-012",
+      "category": "hallucinated",
+      "question": "78xx 系列三端稳压器输出什么极性、什么范围的电压？",
+      "reference_answer": "78xx 输出正电压，后两位即输出电压值，例如 7805 输出 +5V。",
+      "reference_context": "78xx 系列为固定正电压输出三端稳压器，型号后两位表示输出电压，如 7805 输出 +5V；79xx 系列为固定负电压输出。",
+      "candidate_answer": "78xx 输出正电压，7805 为 +5V。若需要负电压，把 7805 的接地端接 -5V 即可得到 -10V 输出，这是教材推荐的常用做法。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "前半正确；浮地接法与「教材推荐」为编造"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": true,
+        "note": "后半结论错误且无片段依据"
+      },
+      "adjudication": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "reviewer": "ai-draft-arbitration",
+        "note": "前半句正确，后半句编造并给出错误结论；主判分按 partial，幻觉记为 true"
+      }
+    },
+    {
+      "id": "meta-013",
+      "category": "correct",
+      "question": "电压跟随器的增益是多少？它有什么用途？",
+      "reference_answer": "Auf=1；用作缓冲级，隔离前后级、实现阻抗匹配。",
+      "reference_context": "电压跟随器是同相比例电路在 Rf=0、R1 开路时的特例，Auf=1，输入电阻高、输出电阻低，常用作缓冲级实现阻抗匹配。",
+      "candidate_answer": "Auf=1，输入电阻高、输出电阻低，适合作缓冲级实现阻抗匹配。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-014",
+      "category": "partial",
+      "question": "反相积分电路的输出与输入是什么关系？",
+      "reference_answer": "uo=-(1/RC)∫ui dt；阶跃输入时输出线性变化（反相）。",
+      "reference_context": "反相积分电路由运放、输入电阻 R 和反馈电容 C 组成，uo=-(1/RC)∫ui dt。输入为阶跃电压时，输出随时间线性下降。",
+      "candidate_answer": "输出与输入的积分成正比，uo 随输入的累积而变化。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "定性对，缺公式与反相符号"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "未说明负号与时间常数"
+      }
+    },
+    {
+      "id": "meta-015",
+      "category": "wrong",
+      "question": "「虚断」的物理含义是什么？",
+      "reference_answer": "指两输入端电流近似为零（i+≈i-≈0），由理想运放输入电阻无穷大导致。",
+      "reference_context": "理想运放输入电阻无穷大，输入端电流近似为零，称为虚断。虚断指电流为零，并非内部真正断开；配合虚短可分析线性应用电路。",
+      "candidate_answer": "虚断指运放内部输入级被断开，所以反馈网络里没有电流流过。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "把虚断扩大到反馈网络"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "结论错误"
+      }
+    },
+    {
+      "id": "meta-016",
+      "category": "hallucinated",
+      "question": "运放接成开环比较器，ui 从 0 缓慢增大到 1V，输出如何变化？",
+      "reference_answer": "开环时输出只有接近 +Vcc 或 -Vcc 两个电平，输入过零附近即翻转。",
+      "reference_context": "运放开环工作没有负反馈，很小的差模输入就使输出进入饱和；输出只有高、低两个电平，分别接近正、负电源电压。",
+      "candidate_answer": "开环无负反馈，输出只有接近 ±Vcc 的两个电平。由于开环增益约 10^5，输入每变化 1mV 输出约变化 100V，因此实际翻转时间小于 1ns。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "两电平结论对；1ns 翻转时间为编造"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "压摆相关数字无依据"
+      }
+    },
+    {
+      "id": "meta-017",
+      "category": "correct",
+      "question": "单相桥式整流电路中，每只二极管承受的最大反向电压是多少？",
+      "reference_answer": "最大反向电压为 √2 U2（约 1.41U2）。",
+      "reference_context": "单相桥式整流中每只二极管承受的最大反向电压为 √2 U2，约为变压器二次电压有效值的 1.41 倍。",
+      "candidate_answer": "每只二极管承受的最大反向电压为 √2 U2，约 1.41U2。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-018",
+      "category": "partial",
+      "question": "电容滤波电路中，滤波电容容量增大，输出直流电压和纹波如何变化？",
+      "reference_answer": "电容增大使输出平均电压升高、纹波减小，空载时接近 √2 U2。",
+      "reference_context": "电容滤波利用电容充放电减小脉动。电容容量越大、负载电阻越大，放电越慢，输出平均电压越高（空载接近 √2 U2），纹波越小。",
+      "candidate_answer": "电容越大滤波效果越好，输出更平滑。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "只答纹波，未答平均电压"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "缺空载上限 √2 U2"
+      }
+    },
+    {
+      "id": "meta-019",
+      "category": "wrong",
+      "question": "稳压二极管稳压时工作在什么状态？",
+      "reference_answer": "工作在反向击穿区，靠击穿后端电压基本不变的特性稳压。",
+      "reference_context": "稳压二极管工作在反向击穿区，反向电流在允许范围内变化时端电压基本不变，从而实现稳压；使用时必须串联限流电阻。",
+      "candidate_answer": "稳压二极管工作在正向导通区，靠 0.7V 正向压降实现稳压。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "方向说反"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "应为反向击穿区"
+      }
+    },
+    {
+      "id": "meta-020",
+      "category": "hallucinated",
+      "question": "乙类互补对称功率放大电路的最高效率是多少？",
+      "reference_answer": "理想最高效率 78.5%（π/4）。",
+      "reference_context": "乙类互补对称功放中两只三极管各导通半个周期，理想情况下最高效率为 78.5%（π/4），实际因管压降与交越失真略低。",
+      "candidate_answer": "理想最高效率为 78.5%。采用氮化镓功率管后可提升到 92%，这已是当前音频功放的主流方案。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "78.5% 正确；92% 与主流方案为编造"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "多出的器件结论片段中没有依据"
+      }
+    },
+    {
+      "id": "meta-021",
+      "category": "correct",
+      "question": "乙类互补对称功放为什么会产生交越失真？如何消除？",
+      "reference_answer": "过零附近两管均截止造成交越失真；加正向偏置改为甲乙类可消除。",
+      "reference_context": "乙类功放在输入信号过零附近两只三极管都未导通，输出出现平顶失真，称交越失真。给两管基极加适当正向偏置，使之工作在甲乙类即可消除。",
+      "candidate_answer": "因为过零附近两管都不导通；给基极加适当正向偏置，让电路工作在甲乙类即可消除。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-022",
+      "category": "partial",
+      "question": "差分减法电路在 R1=R2=R、Rf=R3 时，输出 uo 与两输入的关系是什么？",
+      "reference_answer": "uo=(Rf/R)(u2-u1)。",
+      "reference_context": "差分减法电路在电阻对称条件下实现减法运算，uo=(Rf/R)(u2-u1)。",
+      "candidate_answer": "输出与两输入之差成正比，uo∝(u2-u1)。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "缺比例系数"
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": "减法关系已说明"
+      },
+      "adjudication": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "reviewer": "ai-draft-arbitration",
+        "note": "减法关系正确但未给出 Rf/R 系数，按 partial 定档"
+      }
+    },
+    {
+      "id": "meta-023",
+      "category": "wrong",
+      "question": "负反馈放大电路中「反馈深度」指什么？",
+      "reference_answer": "反馈深度即 1+AF。",
+      "reference_context": "反馈深度用 1+AF 表示，A 为开环增益，F 为反馈系数。1+AF 越大，负反馈越深，闭环增益越小，稳定性和带宽改善越明显。",
+      "candidate_answer": "反馈深度指反馈系数 F 的大小，F 越大反馈越深。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "把反馈深度当成 F"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "应为 1+AF"
+      }
+    },
+    {
+      "id": "meta-024",
+      "category": "hallucinated",
+      "question": "什么是运放的输入失调电压？",
+      "reference_answer": "使输出为零所需施加的输入补偿电压，越小直流精度越高。",
+      "reference_context": "实际运放两输入端存在不对称，使输出为零时需在输入端施加的补偿电压称为输入失调电压 UIO。UIO 越小，直流精度越高。",
+      "candidate_answer": "输入失调电压是使输出为零所需在输入端施加的补偿电压，越小越好。典型通用运放约 5μV，精密运放可低至 0.1nV。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "定义对；量级数字为编造"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": true,
+        "note": "数字编造且与常识不符"
+      },
+      "adjudication": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "reviewer": "ai-draft-arbitration",
+        "note": "定义正确，补充的量级数据为编造，按 partial + 幻觉定档"
+      }
+    },
+    {
+      "id": "meta-025",
+      "category": "correct",
+      "question": "直流稳压电源中，整流电路和滤波电路的先后顺序能否颠倒？",
+      "reference_answer": "不能颠倒；必须先整流再滤波。",
+      "reference_context": "直流稳压电源按变压器、整流、滤波、稳压的顺序工作。整流先把交流变为脉动直流，滤波再减小脉动；顺序颠倒则滤波无法发挥作用。",
+      "candidate_answer": "不能颠倒。整流先把交流变成脉动直流，滤波才有可滤的脉动量。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-026",
+      "category": "partial",
+      "question": "集成运放中为什么广泛使用恒流源作偏置？",
+      "reference_answer": "提供稳定偏置电流、提高共模抑制与等效输入电阻，并适应较低电源电压。",
+      "reference_context": "集成运放内部广泛使用恒流源提供偏置电流，可在较低电源电压下获得稳定工作点，并提高共模抑制能力和等效输入电阻。",
+      "candidate_answer": "用恒流源可以获得稳定的静态工作点，不随温度变化。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "只答工作点稳定"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "漏共模抑制与输入电阻"
+      }
+    },
+    {
+      "id": "meta-027",
+      "category": "wrong",
+      "question": "如何用瞬时极性法判断反馈的极性？",
+      "reference_answer": "假设输入瞬时极性并逐级推出反馈信号极性；削弱净输入为负反馈，增强为正反馈。",
+      "reference_context": "瞬时极性法：假定输入信号瞬时为正，沿信号传输路径逐级标出各点极性，回到输入端的反馈信号若削弱净输入则为负反馈，增强则为正反馈。",
+      "candidate_answer": "瞬时极性法就是测量输出端的直流电压极性，与输入端相反即为负反馈。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "混淆静态测量与瞬时极性"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "方法描述错误"
+      }
+    },
+    {
+      "id": "meta-028",
+      "category": "hallucinated",
+      "question": "运放的增益带宽积 GBP 有什么工程意义？",
+      "reference_answer": "GBP 近似常数，闭环带宽 fH≈GBP/Auf，增益越高带宽越窄。",
+      "reference_context": "增益带宽积 GBP=Aud·fH，在开环增益随频率下降的区域内近似为常数。闭环增益越高，可用带宽越窄，可据此估算闭环带宽 fH≈GBP/Auf。",
+      "candidate_answer": "GBP 近似为常数，闭环带宽 fH≈GBP/Auf。以 NE5532 为例，其 GBP 为 10MHz，接成增益 100 时带宽正好 100kHz，且相位裕度保持 90°。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "关系对；具体器件数据与相位裕度为编造"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "90° 相位裕度无依据"
+      }
+    },
+    {
+      "id": "meta-029",
+      "category": "correct",
+      "question": "反相加法电路中，三路输入电阻均为 R、反馈电阻为 Rf，输出表达式是什么？",
+      "reference_answer": "uo=-(Rf/R)(ui1+ui2+ui3)。",
+      "reference_context": "反相加法电路 uo=-Rf(ui1/R1+ui2/R2+ui3/R3)；当三路输入电阻相同时，uo=-(Rf/R)(ui1+ui2+ui3)。",
+      "candidate_answer": "三路输入电阻相同，uo=-(Rf/R)(ui1+ui2+ui3)。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-030",
+      "category": "partial",
+      "question": "一阶有源低通滤波电路与无源 RC 低通相比有什么优点？",
+      "reference_answer": "输入阻抗高、输出阻抗低、便于级联，且可提供通带增益。",
+      "reference_context": "一阶有源低通滤波以运放为核心，输入阻抗高、输出阻抗低，便于级联，且通带内可提供增益；无源 RC 滤波带负载能力差，级联时相互影响。",
+      "candidate_answer": "有源滤波带负载能力强，滤波效果比无源好。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "未答阻抗与增益"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "「效果更好」缺依据"
+      }
+    },
+    {
+      "id": "meta-031",
+      "category": "wrong",
+      "question": "电压负反馈使放大电路的输出电阻如何变化？",
+      "reference_answer": "电压负反馈使输出电阻减小。",
+      "reference_context": "电压负反馈取样输出电压，使输出电阻减小，输出更接近恒压源；电流负反馈使输出电阻增大。",
+      "candidate_answer": "电压负反馈使输出电阻增大，因为反馈电压与输出电压串联。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "方向说反"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "电压反馈降低输出电阻"
+      }
+    },
+    {
+      "id": "meta-032",
+      "category": "hallucinated",
+      "question": "通用集成运放的共模抑制比一般在什么量级？",
+      "reference_answer": "通用运放约 80~100dB，高精度可达 120dB 以上。",
+      "reference_context": "通用集成运放的共模抑制比通常在 80~100dB 量级，高精度运放可达 120dB 以上。KCMR 越大，抑制共模干扰能力越强。",
+      "candidate_answer": "通用运放约 80~100dB。当前主流型号已普遍做到 160dB，并通过片内数字校准把温漂压到 0.01μV/℃。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "量级对；160dB 与温漂数字为编造"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "多出的数字无片段依据"
+      }
+    },
+    {
+      "id": "meta-033",
+      "category": "correct",
+      "question": "反相比例电路中为什么说反相输入端是「虚地」？",
+      "reference_answer": "同相端接地，虚短使 u-≈0，电位为零但未真正接地，故称虚地。",
+      "reference_context": "反相比例电路中同相端接地，由虚短得 u-≈u+=0；反相端电位近似为零但并未真正接地，称为虚地。",
+      "candidate_answer": "同相端接地，虚短使 u-≈u+=0，反相端电位近似为零但没有真正接地，所以叫虚地。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-034",
+      "category": "partial",
+      "question": "差分放大电路靠什么抑制共模信号？",
+      "reference_answer": "靠电路对称使共模输出相互抵消，并靠大的公共发射极电阻或恒流源提高共模抑制。",
+      "reference_context": "差分放大电路利用两侧电路参数对称，使共模输入产生的两路输出变化相互抵消；同时增大发射极公共电阻（或用恒流源）可进一步抑制共模。",
+      "candidate_answer": "靠两侧电路对称，共模信号在输出端相互抵消。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "漏公共电阻/恒流源"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "只答对称性"
+      }
+    },
+    {
+      "id": "meta-035",
+      "category": "wrong",
+      "question": "滤波电路能否取代稳压电路？",
+      "reference_answer": "不能。滤波只减小脉动，稳压才抑制电网与负载波动。",
+      "reference_context": "滤波电路只能减小脉动，不能抑制电网电压波动和负载变化引起的输出变化；稳压电路才能在输入和负载变化时保持输出稳定。两者作用不同，不能互相取代。",
+      "candidate_answer": "可以。滤波电容足够大时输出已很平滑，因此不必再加稳压电路。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "结论与原理均错"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "混淆滤波与稳压作用"
+      }
+    },
+    {
+      "id": "meta-036",
+      "category": "hallucinated",
+      "question": "稳压管稳压电路中限流电阻的作用是什么？",
+      "reference_answer": "限制稳压管反向电流，使其保持在允许范围内，防止损坏。",
+      "reference_context": "稳压管必须串联限流电阻，用来限制流过稳压管的反向电流，使其工作在允许范围内，避免电流过大损坏稳压管。",
+      "candidate_answer": "限流电阻用来限制稳压管电流。若去掉限流电阻，稳压管仍能稳压，只是纹波会略微增大，这是实验室常用的简化接法。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "作用答对；去掉限流电阻仍能稳压为编造"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": true,
+        "note": "编造内容给出危险结论"
+      },
+      "adjudication": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "reviewer": "ai-draft-arbitration",
+        "note": "作用描述正确，后半段为片段外编造且结论错误；按 partial + 幻觉定档"
+      }
+    },
+    {
+      "id": "meta-037",
+      "category": "correct",
+      "question": "串联负反馈为什么能提高输入电阻？",
+      "reference_answer": "反馈电压串联削弱净输入，输入电流减小，输入电阻增大约 (1+AF) 倍。",
+      "reference_context": "串联负反馈把反馈电压与输入电压串联后加到净输入端，相同输入电压下净输入电压减小、输入电流减小，因此输入电阻增大，约为原来的 (1+AF) 倍。",
+      "candidate_answer": "反馈电压与输入电压串联，净输入电压减小，输入电流随之减小，所以输入电阻增大约 (1+AF) 倍。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      },
+      "annotator_b": {
+        "judgment": "correct",
+        "hallucinated": false,
+        "note": ""
+      }
+    },
+    {
+      "id": "meta-038",
+      "category": "partial",
+      "question": "分析线性应用电路时，理想运放有哪些假设？",
+      "reference_answer": "开环增益、输入电阻、带宽无穷大，输出电阻为零，无失调；由此得虚短与虚断。",
+      "reference_context": "理想运放假设：开环增益无穷大、输入电阻无穷大、输出电阻为零、带宽无穷大、无失调与温漂；由此得到虚短与虚断两条分析依据。",
+      "candidate_answer": "理想运放的开环增益和输入电阻都无穷大，所以可以认为两输入端电位相等、电流为零。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "只列两条假设"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": false,
+        "note": "未提输出电阻与带宽"
+      }
+    },
+    {
+      "id": "meta-039",
+      "category": "wrong",
+      "question": "甲类功率放大电路的最高效率是多少？",
+      "reference_answer": "甲类理想最高效率 50%。",
+      "reference_context": "甲类功放静态电流大，理想情况下最高效率仅 50%，实际约 30%~40%；乙类互补对称功放理想最高效率为 78.5%。",
+      "candidate_answer": "甲类功放最高效率为 78.5%，与乙类相同。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "与乙类混淆"
+      },
+      "annotator_b": {
+        "judgment": "wrong",
+        "hallucinated": false,
+        "note": "甲类为 50%"
+      }
+    },
+    {
+      "id": "meta-040",
+      "category": "hallucinated",
+      "question": "负反馈放大电路为什么可能产生自激振荡？",
+      "reference_answer": "附加相移达 180° 且 |AF|≥1 时负反馈变正反馈，引起自激。",
+      "reference_context": "负反馈电路在低频和中频段为负反馈，但附加相移随频率增大；当附加相移达到 180° 且环路增益 |AF|≥1 时，负反馈变为正反馈，产生自激振荡。",
+      "candidate_answer": "当附加相移达到 180° 且环路增益足够大时，负反馈变成正反馈，就会自激。工程上常在反馈支路并接 1000pF 电容到地彻底消除自激，这是教材给出的通用做法。",
+      "candidate_model": "deepseek-chat",
+      "annotator_a": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "机理对；1000pF 与「彻底消除」为编造"
+      },
+      "annotator_b": {
+        "judgment": "partial",
+        "hallucinated": true,
+        "note": "补偿做法无片段依据"
+      }
+    }
+  ]
+}

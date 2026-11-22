@@ -167,7 +167,7 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 | `agent`（回环） | ✓ | ✓ | ✓ | ✓ | 协议确定；工具选择与多步推理概率性 |
 | `pipeline` | ✓ | ✓ | ✓ | △ | 编排本身不单独设 AI 分数，指标归各能力 |
 | `session` / 多轮 | ✓ | ✓ | ✓ | ✓ | 状态正确性与上下文理解必须分开测 |
-| `judge` / `eval*.py` | ✓ | ✓ | — | ✓（元评估） | 评测器自身可靠性需人工对齐 |
+| `judge` / `judge_meta` / `eval*.py` | ✓ | ✓ | — | ✓（元评估） | 评测器自身可靠性需人工对齐 |
 | `companion_v0` | △ | — | △ | — | 旧入口，只做冒烟，不投测试预算 |
 | `build_index.py` | — | ✓ | — | — | 只验证可控语料下的流程与落盘 |
 
@@ -328,7 +328,12 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 | EVL-UNIT-001 | eval.py | Unit | 关键词判分边界 | `expected="5V\|5 V"`；答案含"不是 5V"；`answer=None` | 现状：任一子串命中即 True（含否定句假阳性）；`None` 不抛异常返回 False | 无 | 直接导入 `scripts.eval.is_correct` | P1 |
 | EVL-UNIT-002 | eval_report.py | Unit | 引用率/多数投票 | 重复 source、空 hits、投票 2:1 与 1:1 | 命中率 = 命中来源数/片段数（重复来源会重复计数）；`hits=[]` → `None`；平票取先出现值 | 无 | 无 | P1 |
 | EVL-UNIT-003 | eval_report.py | Unit | 汇总分母 | 12 题中 7 道有 hits | 引用率与幻觉率分母为 RAG 题数（7），不是总题数；无 RAG 题时打印"无 RAG 题"且不除零 | 无 | 构造 rows | P1 |
-| EVL-META-001 | judge | AI Eval（元） | 裁判与人工一致性 | 人工双标 40 条（正确/部分/错误/幻觉） | 报告 agreement、Cohen's κ、各类 precision/recall；同源模型偏差单列 | 裁判 LLM + 人审 | 盲审 + 异源裁判抽检 | P0 |
+| EVL-UNIT-004 | judge_meta | Unit | 数据集承载格式与标注状态 | 合法封装（`annotation` + `cases`）；裸数组；缺 `annotation`；`status` 非法；`human_double_annotated` 只列 1 位标注者；`["alice", "alice"]`；`["alice", "  alice  "]`；draft 状态却列标注者；缺 `adjudication`；`judgment` 非法；`hallucinated=0`；重复 `id`；顶层非对象 | 合法数据加载为 `MetaDataset`，gold 取仲裁结果或两位一致结果；标注者名称去空白后必须至少有两个唯一值，重复姓名不得放行；各类非法输入抛 `ValueError` 且消息指明字段；draft 状态下 `is_human_double_annotated` 为 `False`，不允许被当作人工双标数据使用 | 无 | 无（纯函数，`tmp_path` 写临时 JSON） | P0 |
+| EVL-UNIT-005 | judge_meta | Unit | agreement 与 Cohen's κ | 手算 4 条（po=0.75、pe=5/16、κ≈0.636）；全同类且全对；空样本；两侧边际分布不同 | agreement = 一致数 / n；κ = (po−pe)/(1−pe)；n=0 或 pe=1 时返回 `None`，不得用 0 或 1 冒充；无关标签不影响 κ | 无 | 无 | P0 |
+| EVL-UNIT-006 | judge_meta | Unit | 每类 precision/recall/F1 与混淆矩阵 | 手算 4 条（correct: tp=1、fp=0、fn=1）；某类无预测（precision 分母 0）；某类无样本（recall 分母 0） | 逐类给出 support/tp/fp/fn；分母为 0 的指标返回 `None`；F1 在 p+r=0 时为 `None`；混淆矩阵行=gold、列=预测，元素总和等于样本数 | 无 | 无 | P0 |
+| EVL-UNIT-007 | judge_meta | Unit | 同源偏差分组与宽松度 | 裁判与回答同为 deepseek 家族；裁判为其它家族；两组混合；单一分组 | `relation_counts` 之和等于样本数，空组为 `None`；宽松度 = mean(judge 分数 − gold 分数)，correct=2/partial=1/wrong=0；全部同源时输出「无法分离」说明，存在异源组时不输出该说明 | 无 | 无 | P1 |
+| EVL-UNIT-008 | judge_meta | Unit | 报告结构与 token/费用记账 | 完美裁判替身；全判 correct 的替身；`UsageTrackingClient` 包装假客户端；带单价与不带单价 | 报告含 dataset/answer_judgment/hallucination/same_source/judge_errors/performance；usage 必须取调用结束后的值（回调而非提前快照），否则记为 0 即失败；无单价时 `cost.estimated is None` 但仍记录 token；`format_report` 含同源偏差小节与「不设质量门槛」声明 | 无 | 替身裁判回调 + 假客户端 | P1 |
+| EVL-META-001 | judge_meta | AI Eval（元） | 裁判与人工一致性 | 人工双标 40 条（正确/部分/错误/幻觉） | 报告 agreement、Cohen's κ、各类 precision/recall；同源模型偏差单列；统计口径由 `EVL-UNIT-004`~`EVL-UNIT-008` 离线保护。数据集标注状态不为 `human_double_annotated` 时用例直接失败，不产出可引用的 agreement | 裁判 LLM + 人审 | 盲审 + 异源裁判抽检 | P0 |
 
 ### 6.12 建库脚本与旧入口
 
@@ -462,7 +467,7 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 
 ### 阶段 5：AI Evaluation（2~3 天，独立作业）
 
-1. 先做 `EVL-META-001`（裁判与人工对齐），**再**设质量门槛。
+1. 先做 `EVL-META-001`（裁判与人工对齐），**再**设质量门槛；其统计口径由 `EVL-UNIT-004`~`EVL-UNIT-008` 离线保护，数据集标注状态未达 `human_double_annotated` 时不产出可引用的 agreement。
 
 2. 扩集：`router` ≥150 题、`retrieval` ≥80 条标注、`generation` ≥60 题、`tool` ≥40 题、`multi-turn` ≥20 剧本。
 

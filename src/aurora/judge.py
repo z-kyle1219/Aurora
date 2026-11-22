@@ -93,15 +93,20 @@ _HALLUCINATION_TOOL = {
 
 
 def _call_judge(system_prompt: str, tool: dict, user_content: str,
-                field: str, default) -> dict:
+                field: str, default, *, client=None, model: str | None = None) -> dict:
     """通用的「调用裁判」入口：发 prompt + tool，解析返回的结构化字段。
 
     两个判分（正确性 / 幻觉）共用这一套「发请求 → 强制调工具 → 解析」，
     只有 prompt、tool schema、要取的字段不同，所以抽成这个私有函数。
+
+    `client`/`model` 默认沿用模块内的 `get_client()` 与 `DEEPSEEK_MODEL`；
+    裁判元评估（`judge_meta.py`）需要用调用方显式提供的凭据构造客户端、
+    或换成异源裁判模型，因此留出这两个可选注入点。离线测试仍然 patch
+    `aurora.judge.get_client`，行为不变。
     """
-    client = get_client()
+    client = client or get_client()
     resp = client.chat.completions.create(
-        model=DEEPSEEK_MODEL,
+        model=model or DEEPSEEK_MODEL,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
@@ -120,7 +125,8 @@ def _call_judge(system_prompt: str, tool: dict, user_content: str,
     return {"judgment": args.get(field, default), "reason": args.get("reason", "")}
 
 
-def judge_answer(standard_answer: str, model_answer: str) -> dict:
+def judge_answer(standard_answer: str, model_answer: str, *,
+                 client=None, model: str | None = None) -> dict:
     """判断回答是否正确。返回 {judgment: correct/partial/wrong, reason}。"""
     result = _call_judge(
         _JUDGE_PROMPT,
@@ -128,13 +134,16 @@ def judge_answer(standard_answer: str, model_answer: str) -> dict:
         f"【标准答案】\n{standard_answer}\n\n【Aurora 回答】\n{model_answer}",
         field="judgment",
         default="partial",
+        client=client,
+        model=model,
     )
     if result["judgment"] not in JUDGMENTS:
         result["judgment"] = "partial"
     return result
 
 
-def judge_hallucination(context: str, model_answer: str) -> dict:
+def judge_hallucination(context: str, model_answer: str, *,
+                        client=None, model: str | None = None) -> dict:
     """判断回答是否编造了检索片段之外的内容。返回 {judgment: bool, reason}。
 
     注意：这里复用了 _call_judge 的通用结构，但返回的字段是布尔值
@@ -146,6 +155,8 @@ def judge_hallucination(context: str, model_answer: str) -> dict:
         f"【检索片段】\n{context}\n\n【Aurora 回答】\n{model_answer}",
         field="hallucinated",
         default=False,
+        client=client,
+        model=model,
     )
     if not isinstance(result["judgment"], bool):
         result["judgment"] = False
