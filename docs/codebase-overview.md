@@ -355,7 +355,7 @@ class Session:
 
 ## 12. 测试与评测现状
 
-仓库已建立 pytest 阶段 0 基础设施与阶段 1 纯逻辑用例：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及 `tools` / `chunker` / `card_loader` / `vector_store` / `session` / `config` 的单元与集成用例。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；阶段 2 及之后尚未整阶段建立，部分后续阶段用例因缺陷验证提前完成；E2E 与 CI 仍未建立。当前判定、例外及证据入口以 `docs/testing/TEST_STATUS.md` 为准。
+仓库已建立 pytest 阶段 0 基础设施、阶段 1 纯逻辑用例与阶段 2 协议失败路径用例：默认离线 marker 过滤、OpenAI 客户端/Socket/BGE 三层防线、严格脚本 Fake、微型合成数据，以及 `tools` / `chunker` / `card_loader` / `vector_store` / `session` / `config` / `router` / `rewrite` / `judge` / `agent` 的单元与集成用例。pytest 作为开发依赖安装，版本由 `uv.lock` 锁定；阶段 3 及之后尚未整阶段建立，部分后续阶段用例因缺陷验证提前完成；E2E 与 CI 仍未建立。当前判定、例外及证据入口以 `docs/testing/TEST_STATUS.md` 为准。
 
 ### 12.1 快速评测
 
@@ -441,7 +441,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - 多轮问题改写。
 - 固定降级回答。
 - 脚本式分类、答案、幻觉、引用和延迟评测。
-- 阶段 0/1 离线 pytest 套件（当前判定见 `docs/testing/TEST_STATUS.md`，本次节点数量与执行读数见 `docs/testing/runs/2026-11-21-stage1.md`）。
+- 阶段 0/1/2 离线 pytest 套件（当前判定与证据入口见 `docs/testing/TEST_STATUS.md`）。
 
 ### 未实现
 
@@ -450,7 +450,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - Session 持久化、隔离和并发管理。
 - 日志、监控、统一异常响应和调用重试。
 - 相似度阈值、混合检索和 rerank。
-- CI 自动执行；阶段 2 及之后尚未整阶段建立的协议、编排与 E2E 用例（部分用例提前完成，见 `docs/testing/TEST_STATUS.md`）。
+- CI 自动执行；阶段 3 及之后尚未整阶段建立的编排与 E2E 用例（部分用例提前完成，见 `docs/testing/TEST_STATUS.md`）。
 - 通用工具注册、外部工具和并行工具执行。
 
 ### 未知
