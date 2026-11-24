@@ -16,7 +16,7 @@
 
 Aurora 是一个面向《模拟电子技术》课程的命令行智能助教原型。它将用户问题分类后分派到不同处理链路：数值计算题进入 Tool Use，知识问答进入 RAG，超出课程范围的问题进入固定降级回答。
 
-当前核心编排入口是 `aurora.pipeline.run()`。仓库没有 Web API、图形界面或持久化服务，完整 Pipeline 主要由 demo 和评测脚本调用。
+当前核心编排入口是 `aurora.pipeline.run()`。本机聊天 API 使用 FastAPI 和 Uvicorn，并将会话保存在 SQLite。完整 Pipeline 也可由 demo 和评测脚本调用。图形界面和登录尚未接入。
 
 需要注意，`scripts/chat_loop.py` 仍调用早期的 `aurora.companion_v0.ask_stream()`。该交互脚本只把历史消息直接发送给模型，不经过当前的上下文改写、Router、RAG、Tool Use 或 `Session`。因此，“命令行可交互聊天”和“完整智能体 Pipeline”目前是两条不同入口。
 
@@ -266,6 +266,8 @@ Pipeline 只在 `opamp` 分支为计算器挂载 `validate_opamp_output()`。该
 
 ## 8. Session 与多轮状态
 
+本机聊天 API 通过 `aurora.api` 运行。它从 SQLite 恢复有序历史，为每次提问构造临时 `Session`，并在 Pipeline 成功后保存问答。以下描述的是 Pipeline 使用的内存对象，HTTP 边界和持久化规则见 [API 设计稿](api-design.md)。
+
 `Session` 是一个只包含 `history` 的 dataclass：
 
 ```python
@@ -351,7 +353,7 @@ class Session:
 
 `rewrite_question()` 用 `try/except Exception` 兜底，任何异常、空结果或超过 500 字均回退原问题（`rewrite.py:98-119`，commit `cf01520`）。
 
-日志系统目前**未实现**。源码没有使用 `logging` 或结构化日志；所有脚本通过 `print()` 输出过程信息，也没有 trace ID、请求 ID、日志级别或持久化指标。
+聊天 API 使用标准库 `logging` 记录索引加载失败和请求异常，Uvicorn 输出服务日志。项目尚未建立统一的结构化日志、请求 ID 和持久化指标。
 
 ## 12. 测试与评测现状
 
@@ -447,6 +449,7 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 - 单一数学计算工具及 function-calling 回环。
 - 运放输出电压校验警告。
 - 进程内多轮 Session。
+- 本机聊天 HTTP API，支持 SQLite 会话恢复、按开发身份过滤及串行会话操作。
 - 多轮问题改写。
 - 固定降级回答。
 - 脚本式分类、答案、幻觉、引用和延迟评测。
@@ -454,10 +457,10 @@ AST 白名单阻止了任意 Python 代码执行。`calculate_expression()` 现�
 
 ### 未实现
 
-- Web/API/GUI 产品入口。
+- 聊天前端与多人登录。
 - 完整 Pipeline 的流式输出。
-- Session 持久化、隔离和并发管理。
-- 日志、监控、统一异常响应和调用重试。
+- 跨进程会话并发管理。
+- 统一结构化日志、监控和显式调用重试策略。
 - 相似度阈值、混合检索和 rerank。
 - CI 自动执行与 AI Evaluation 尚未整阶段建立（见 `docs/testing/TEST_STATUS.md`）。
 - 通用工具注册、外部工具和并行工具执行。
