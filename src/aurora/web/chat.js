@@ -24,6 +24,166 @@ function element(tag, className, content) {
   return node;
 }
 
+function appendInlineMarkdown(parent, text) {
+  const pattern = /(\*\*[^*\n]+\*\*|`[^`\n]+`|\[[^\]\n]+\]\([^\s)]+\))/g;
+  let cursor = 0;
+  for (const match of text.matchAll(pattern)) {
+    parent.append(document.createTextNode(text.slice(cursor, match.index)));
+    const token = match[0];
+    if (token.startsWith("**")) {
+      parent.append(element("strong", "", token.slice(2, -2)));
+    } else if (token.startsWith("`")) {
+      parent.append(element("code", "", token.slice(1, -1)));
+    } else {
+      const split = token.indexOf("](");
+      const href = token.slice(split + 2, -1);
+      let url;
+      try {
+        url = new URL(href, window.location.href);
+      } catch {
+        url = null;
+      }
+      if (url && ["http:", "https:", "mailto:"].includes(url.protocol)) {
+        const link = element("a", "", token.slice(1, split));
+        link.href = url.href;
+        if (url.protocol !== "mailto:") {
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+        }
+        parent.append(link);
+      } else {
+        parent.append(document.createTextNode(token));
+      }
+    }
+    cursor = match.index + token.length;
+  }
+  parent.append(document.createTextNode(text.slice(cursor)));
+}
+
+function tableCells(line) {
+  if (!line) return [];
+  const row = line.trim().replace(/^\\(?=\|)/, "").replace(/\|\\$/, "|");
+  if (!/(?<!\\)\|/.test(row)) return [];
+  return row.replace(/^\||(?<!\\)\|$/g, "").split(/(?<!\\)\|/)
+    .map((cell) => cell.trim().replace(/\\\|/g, "|"));
+}
+
+function renderMarkdown(text) {
+  const fragment = document.createDocumentFragment();
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  let paragraph = [];
+  let list = null;
+
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    const node = element("p");
+    appendInlineMarkdown(node, paragraph.join("\n"));
+    fragment.append(node);
+    paragraph = [];
+  };
+  const closeList = () => { list = null; };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const fence = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (fence) {
+      flushParagraph();
+      closeList();
+      const marker = fence[1];
+      const closingFence = new RegExp(`^ {0,3}${marker[0]}{${marker.length},}[ \\t]*$`);
+      const code = [];
+      while (++index < lines.length && !closingFence.test(lines[index])) code.push(lines[index]);
+      const pre = element("pre");
+      pre.append(element("code", "", code.join("\n")));
+      fragment.append(pre);
+      continue;
+    }
+    if (!line.trim()) {
+      flushParagraph();
+      closeList();
+      continue;
+    }
+    const columns = tableCells(line);
+    const separators = columns.length ? tableCells(lines[index + 1]) : [];
+    if (columns.length && columns.length === separators.length
+        && separators.every((cell) => /^:?-{3,}:?$/.test(cell))) {
+      flushParagraph();
+      closeList();
+      const wrapper = element("div", "message-table");
+      const table = element("table");
+      const head = element("thead");
+      const body = element("tbody");
+      const appendRow = (section, cells, tag) => {
+        const row = element("tr");
+        for (const [column, separator] of separators.entries()) {
+          const cell = element(tag);
+          if (tag === "th") cell.scope = "col";
+          if (separator.endsWith(":")) {
+            cell.className = separator.startsWith(":") ? "align-center" : "align-right";
+          }
+          appendInlineMarkdown(cell, cells[column] ?? "");
+          row.append(cell);
+        }
+        section.append(row);
+      };
+      appendRow(head, columns, "th");
+      index += 1;
+      while (index + 1 < lines.length) {
+        const cells = tableCells(lines[index + 1]);
+        if (!cells.length) break;
+        appendRow(body, cells, "td");
+        index += 1;
+      }
+      table.append(head, body);
+      wrapper.append(table);
+      fragment.append(wrapper);
+      continue;
+    }
+    const heading = line.match(/^ {0,3}(#{1,6})[ \t]+(.+)$/);
+    if (heading) {
+      flushParagraph();
+      closeList();
+      const node = element(`h${Math.min(heading[1].length + 1, 4)}`);
+      appendInlineMarkdown(node, heading[2]);
+      fragment.append(node);
+      continue;
+    }
+    const item = line.match(/^\s*(?:[-*+]|(\d{1,9})[.)])[ \t]+(.+)$/);
+    if (item) {
+      flushParagraph();
+      const tag = item[1] === undefined ? "ul" : "ol";
+      if (!list || list.tagName.toLowerCase() !== tag) {
+        list = element(tag);
+        if (tag === "ol") list.start = Number(item[1]);
+        fragment.append(list);
+      }
+      const node = element("li");
+      appendInlineMarkdown(node, item[2]);
+      list.append(node);
+      continue;
+    }
+    const quote = line.match(/^>\s?(.*)$/);
+    if (quote) {
+      flushParagraph();
+      closeList();
+      const node = element("blockquote");
+      appendInlineMarkdown(node, quote[1]);
+      fragment.append(node);
+      continue;
+    }
+    if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) {
+      flushParagraph();
+      closeList();
+      fragment.append(element("hr"));
+      continue;
+    }
+    closeList();
+    paragraph.push(line);
+  }
+  flushParagraph();
+  return fragment;
+}
+
 function setBusy(value, message = "") {
   busy = value;
   status.textContent = message;
@@ -77,14 +237,9 @@ function renderMessage(turn) {
     label.append(avatar, document.createTextNode("Aurora"));
     article.append(label);
   }
-  const body = element("p");
+  const body = element("div", "message-body");
   if (assistant) {
-    // Model output remains text. Only a few common inline styles are interpreted.
-    for (const [index, part] of turn.content.split(/(\*\*[^*\n]+\*\*|`[^`\n]+`)/g).entries()) {
-      if (index % 2 === 0) body.append(document.createTextNode(part));
-      else if (part.startsWith("**")) body.append(element("strong", "", part.slice(2, -2)));
-      else body.append(element("code", "", part.slice(1, -1)));
-    }
+    body.append(renderMarkdown(turn.content));
   } else {
     body.textContent = turn.content;
   }
@@ -160,10 +315,17 @@ newChat.addEventListener("click", async () => {
   }
 });
 
+question.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+  event.preventDefault();
+  composer.requestSubmit();
+});
+
 composer.addEventListener("submit", async (event) => {
   event.preventDefault();
   const content = question.value;
   if (busy || needsReload || !content.trim()) return;
+  question.value = "";
   setBusy(true, "Aurora 正在回答…");
   let feedback = "";
   let sent = false;
@@ -177,8 +339,8 @@ composer.addEventListener("submit", async (event) => {
       body: JSON.stringify({ content }),
     });
     turns.push({ role: "user", content }, reply);
-    question.value = "";
   } catch (error) {
+    question.value = content;
     feedback = error.code ? error.message : "请求中断，请重试";
     if (error.code === "service_not_ready") feedback += "，请检查本地课件索引和模型配置";
     if (sent && !error.code) {

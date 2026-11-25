@@ -192,7 +192,11 @@ def test_api_int_005__serves_chat_page_and_assets(tmp_path, http_request):
     script = http_request(app, "GET", "/assets/chat.js", raw=True)
     assert script.status_code == 200
     assert "javascript" in script.headers["content-type"]
+    assert "function renderMarkdown(text)" in script.text
+    assert "body.append(renderMarkdown(turn.content))" in script.text
 
     stylesheet = http_request(app, "GET", "/assets/chat.css", raw=True)
     assert stylesheet.status_code == 200
     assert stylesheet.headers["content-type"].startswith("text/css")
+    assert ".message-body blockquote" in stylesheet.text
+    assert ".message-body pre code" in stylesheet.text

@@ -105,7 +105,35 @@ h1 { margin: 14px 0 27px; font-size: 30px; text-align: center; }
 .message { min-width: 0; overflow-wrap: anywhere; }
 .message header { border: 0; min-height: 0; padding: 0; margin-bottom: 7px; }
 .message header .avatar { width: 25px; }
-.message p { margin: 0; white-space: pre-wrap; line-height: 1.75; }
+.message-body { line-height: 1.75; }
+.message-body > :first-child { margin-top: 0; }
+.message-body > :last-child { margin-bottom: 0; }
+.message-body p { margin: 0 0 12px; white-space: pre-wrap; }
+.message-body h2, .message-body h3, .message-body h4 {
+  margin: 22px 0 8px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+.message-body h2 { font-size: 20px; color: #b6f4df; }
+.message-body h3 { font-size: 17px; }
+.message-body h4 { font-size: 16px; color: #d8dedb; }
+.message-body ul, .message-body ol { margin: 7px 0 14px; padding-left: 25px; }
+.message-body li { margin: 4px 0; }
+.message-body strong { color: #b6f4df; font-weight: 750; }
+.message-body code { padding: 2px 5px; border-radius: 4px; background: #292f2d; color: #f4d39f; font: .9em/1.5 ui-monospace, "Cascadia Code", monospace; }
+.message-body pre { margin: 12px 0 16px; padding: 13px 15px; overflow-x: auto; border: 1px solid var(--line); border-radius: 7px; background: #101212; }
+.message-body pre code { padding: 0; background: transparent; color: #e8ece9; white-space: pre; }
+.message-body blockquote { margin: 12px 0; padding: 6px 0 6px 14px; border-left: 3px solid var(--mint); color: #c5ceca; }
+.message-body hr { margin: 19px 0; border: 0; border-top: 1px solid var(--line); }
+.message-body a { color: #8ee8c9; text-underline-offset: 3px; }
+.message-body a:hover { color: #c0f8e5; }
+.message-table { margin: 12px 0 16px; overflow-x: auto; }
+.message-table table { border-collapse: collapse; }
+.message-table th, .message-table td { border: 1px solid var(--line); padding: 6px 12px; text-align: left; }
+.message-table th { background: #23332d; color: #b6f4df; }
+.message-table .align-center { text-align: center; }
+.message-table .align-right { text-align: right; }
+.message.user .message-body { white-space: pre-wrap; }
 .message.user { justify-self: end; max-width: 85%; padding: 9px 13px; border-radius: 8px; background: #23332d; }
 details { margin-top: 12px; font-size: 14px; color: var(--muted); }
 summary { cursor: pointer; }
