@@ -17,13 +17,15 @@ from aurora.vector_store import VectorStore
 def http_request():
     # Windows 在初始化事件循环时建立内部唤醒通道，先于函数级网络防线完成。
     with start_blocking_portal() as portal:
-        def request(app, method, path, body=None, **headers):
+        def request(app, method, path, body=None, *, raw=False, **headers):
             client = TestClient(app, base_url="http://127.0.0.1", raise_server_exceptions=False)
             client.portal = portal
             try:
                 response = client.request(method, path, json=body, headers=headers)
             finally:
                 client.close()
+            if raw:
+                return response
             return response.status_code, response.json() if response.content else None
 
         yield request
@@ -175,3 +177,22 @@ def test_api_int_004__overlapping_requests_keep_both_turns(tmp_path, monkeypatch
         {"role": "user", "content": "第一问"}, {"role": "assistant", "content": "回答"},
     ]}
     assert len(request(app, "GET", path)[1]["messages"]) == 4
+
+
+def test_api_int_005__serves_chat_page_and_assets(tmp_path, http_request):
+    """API-INT-005：根路由与聊天页面静态资源可访问。"""
+    app = api.create_app(tmp_path / "chat.sqlite3", None)
+
+    page = http_request(app, "GET", "/", raw=True)
+    assert page.status_code == 200
+    assert page.headers["content-type"].startswith("text/html")
+    assert 'href="/assets/chat.css"' in page.text
+    assert 'src="/assets/chat.js"' in page.text
+
+    script = http_request(app, "GET", "/assets/chat.js", raw=True)
+    assert script.status_code == 200
+    assert "javascript" in script.headers["content-type"]
+
+    stylesheet = http_request(app, "GET", "/assets/chat.css", raw=True)
+    assert stylesheet.status_code == 200
+    assert stylesheet.headers["content-type"].startswith("text/css")
