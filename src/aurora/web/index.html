@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aurora · 模电助教</title>
+  <link rel="stylesheet" href="/assets/chat.css">
+  <script type="module" src="/assets/chat.js"></script>
+</head>
+<body>
+  <aside id="sidebar" aria-label="会话侧栏">
+    <div class="brand"><span class="avatar" aria-hidden="true"><i></i><b></b></span>Aurora</div>
+    <button id="new-chat" class="new-chat"><span aria-hidden="true">＋</span> 新建对话</button>
+    <h2>历史会话</h2>
+    <nav id="history" aria-label="历史会话"></nav>
+  </aside>
+  <main>
+    <header>
+      <button id="menu" class="icon-button" aria-label="历史会话" aria-expanded="false" aria-controls="sidebar" title="历史会话">☰</button>
+      <span>模电助教</span>
+    </header>
+    <div id="transcript" class="transcript" role="region" aria-label="对话" tabindex="0">
+      <section id="welcome" class="welcome">
+        <span class="avatar avatar-large" aria-hidden="true"><i></i><b></b></span>
+        <h1>今天想学点什么？</h1>
+        <div class="examples">
+          <button type="button" data-question="反相放大器的输入电阻是 1 kΩ，反馈电阻是 10 kΩ，电压增益是多少？">计算反相放大器增益 <span aria-hidden="true">↗</span></button>
+          <button type="button" data-question="怎么判断一个放大电路的负反馈组态？">判断负反馈组态 <span aria-hidden="true">↗</span></button>
+          <button type="button" data-question="线性稳压电源的整流、滤波和稳压各起什么作用？">理解线性稳压电源 <span aria-hidden="true">↗</span></button>
+        </div>
+      </section>
+      <div id="messages" class="messages" aria-live="polite"></div>
+    </div>
+    <form id="composer">
+      <p id="status" role="status"></p>
+      <div class="input-row">
+        <textarea id="question" rows="2" aria-label="模电问题" placeholder="输入一道模电题，或继续追问…"></textarea>
+        <button id="send" class="send icon-button" type="submit" aria-label="发送" title="发送">↑</button>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

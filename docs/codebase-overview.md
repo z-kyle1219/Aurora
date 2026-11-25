@@ -16,7 +16,7 @@
 
 Aurora 是一个面向《模拟电子技术》课程的命令行智能助教原型。它将用户问题分类后分派到不同处理链路：数值计算题进入 Tool Use，知识问答进入 RAG，超出课程范围的问题进入固定降级回答。
 
-当前核心编排入口是 `aurora.pipeline.run()`。本机聊天 API 使用 FastAPI 和 Uvicorn，并将会话保存在 SQLite。完整 Pipeline 也可由 demo 和评测脚本调用。图形界面和登录尚未接入。
+当前核心编排入口是 `aurora.pipeline.run()`。本机聊天服务使用 FastAPI 和 Uvicorn，根路由提供同源聊天页面，会话保存在 SQLite。完整 Pipeline 也可由 demo 和评测脚本调用。登录尚未接入。
 
 需要注意，`scripts/chat_loop.py` 仍调用早期的 `aurora.companion_v0.ask_stream()`。该交互脚本只把历史消息直接发送给模型，不经过当前的上下文改写、Router、RAG、Tool Use 或 `Session`。因此，“命令行可交互聊天”和“完整智能体 Pipeline”目前是两条不同入口。
 

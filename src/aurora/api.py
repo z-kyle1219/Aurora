@@ -13,7 +13,8 @@ from uuid import uuid4
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from openai import APIError
 from pydantic import BaseModel, StrictStr, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -71,6 +72,13 @@ def create_app(database: Path, store: VectorStore | None, *, owner_id: str = "de
         )
 
     app = FastAPI(title="Aurora Chat API", redirect_slashes=False)
+    web = Path(__file__).with_name("web")
+    app.mount("/assets", StaticFiles(directory=web), name="assets")
+
+    @app.get("/", include_in_schema=False)
+    def chat_page() -> FileResponse:
+        return FileResponse(web / "index.html")
+
     # 同步端点在线程池运行。保持原型的串行访问，覆盖读取、生成及提交。
     lock = Lock()
     sessions = "/api/v1/sessions"
