@@ -62,6 +62,21 @@ def _fail(status: int, code: str, message: str) -> HTTPException:
     return HTTPException(status, detail={"code": code, "message": message})
 
 
+_TITLE_LIMIT = 60
+
+
+def _session_summary(history: list[dict]) -> str | None:
+    """取首条学生提问作为会话摘要，供侧栏在打开前显示。"""
+    for turn in history:
+        if turn.get("role") != "user":
+            continue
+        text = " ".join(str(turn.get("content", "")).split())
+        if not text:
+            continue
+        return text if len(text) <= _TITLE_LIMIT else text[: _TITLE_LIMIT - 1] + "…"
+    return None
+
+
 def create_app(database: Path, store: VectorStore | None, *, owner_id: str = "dev-user") -> FastAPI:
     """创建本机应用，兼容已有 SQLite 文件。"""
     database.parent.mkdir(parents=True, exist_ok=True)
@@ -155,9 +170,20 @@ def create_app(database: Path, store: VectorStore | None, *, owner_id: str = "de
     def list_sessions() -> dict:
         with lock, closing(sqlite3.connect(database)) as db:
             rows = db.execute(
-                "SELECT id FROM sessions WHERE owner_id = ? ORDER BY rowid DESC", (owner_id,),
-            )
-            return {"sessions": [{"session_id": row[0]} for row in rows]}
+                "SELECT id, history FROM sessions WHERE owner_id = ? ORDER BY rowid DESC",
+                (owner_id,),
+            ).fetchall()
+        listed = []
+        for session_id, raw in rows:
+            try:
+                history = json.loads(raw)
+            except (TypeError, ValueError):
+                history = []
+            listed.append({
+                "session_id": session_id,
+                "title": _session_summary(history if isinstance(history, list) else []),
+            })
+        return {"sessions": listed}
 
     @app.delete(sessions + "/{session_id}", status_code=204)
     def delete_session(session_id: str) -> Response:

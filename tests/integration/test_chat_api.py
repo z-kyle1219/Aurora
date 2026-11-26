@@ -1,5 +1,6 @@
 """本机聊天 HTTP 契约与 SQLite 集成测试。"""
 
+import json
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
@@ -73,7 +74,9 @@ def test_api_int_001__rounds_survive_restart(
         ],
     }
     app = api.create_app(db, store)
-    assert request(app, "GET", "/api/v1/sessions") == (200, {"sessions": [created]})
+    assert request(app, "GET", "/api/v1/sessions") == (200, {"sessions": [
+        {**created, "title": "第一问"},
+    ]})
     assert request(app, "POST", f"{path}/messages", {"content": "为什么？"})[0] == 200
     assert queries == [" 第一问 ", "续问的独立问题"]
     assert fake.last_call["messages"][1:3] == [
@@ -200,3 +203,30 @@ def test_api_int_005__serves_chat_page_and_assets(tmp_path, http_request):
     assert stylesheet.headers["content-type"].startswith("text/css")
     assert ".message-body blockquote" in stylesheet.text
     assert ".message-body pre code" in stylesheet.text
+
+
+def test_api_int_006__session_list_shows_question_summary(tmp_path, http_request):
+    """API-INT-006：列表在打开会话前就给出首条提问摘要，空会话无摘要。"""
+    db = tmp_path / "chat.sqlite3"
+    app = api.create_app(db, None)
+    empty = http_request(app, "POST", "/api/v1/sessions")[1]
+    brief = http_request(app, "POST", "/api/v1/sessions")[1]
+    verbose = http_request(app, "POST", "/api/v1/sessions")[1]
+    question = "  反相比例电路的增益怎么算？  "
+    long_question = "反相比例电路" * 15
+    with sqlite3.connect(db) as connection:
+        for session, content in ((brief, question), (verbose, long_question)):
+            connection.execute(
+                "UPDATE sessions SET history = ? WHERE id = ?",
+                (json.dumps([
+                    {"role": "user", "content": content},
+                    {"role": "assistant", "content": "答案"},
+                ], ensure_ascii=False), session["session_id"]),
+            )
+
+    listed = http_request(app, "GET", "/api/v1/sessions")[1]["sessions"]
+    assert listed == [
+        {"session_id": verbose["session_id"], "title": long_question[:59] + "…"},
+        {"session_id": brief["session_id"], "title": "反相比例电路的增益怎么算？"},
+        {"session_id": empty["session_id"], "title": None},
+    ]

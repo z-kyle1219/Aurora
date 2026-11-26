@@ -214,11 +214,20 @@ function toggleMenu(open) {
   menu.setAttribute("aria-expanded", String(open));
 }
 
+const TITLE_LIMIT = 60;
+
+function summarize(content) {
+  const text = String(content ?? "").replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  return text.length > TITLE_LIMIT ? `${text.slice(0, TITLE_LIMIT - 1)}…` : text;
+}
+
 function renderHistory() {
   history.replaceChildren();
-  for (const [index, session] of sessions.entries()) {
-    const title = session.title || `对话 ${sessions.length - index}`;
-    const button = element("button", "", title);
+  for (const session of sessions) {
+    const title = session.title || "新对话";
+    const button = element("button");
+    button.append(element("span", "history-title", title));
     button.disabled = busy;
     button.title = title;
     if (session.session_id === active) button.setAttribute("aria-current", "true");
@@ -272,7 +281,7 @@ function renderTurns(pending) {
 
 function rememberTitle() {
   const session = sessions.find(({ session_id }) => session_id === active);
-  if (session) session.title = turns.find(({ role }) => role === "user")?.content;
+  if (session) session.title = summarize(turns.find(({ role }) => role === "user")?.content);
 }
 
 async function openChat(id) {
