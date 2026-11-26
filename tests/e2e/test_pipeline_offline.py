@@ -1,5 +1,7 @@
 """离线 Pipeline E2E：从问题输入走到统一返回与 Session 写回。"""
 
+import json
+
 import numpy as np
 import pytest
 
@@ -15,6 +17,89 @@ QUESTIONS = {
     "concept": "什么是虚短和虚断",
     "fallback": "请分析 JK 触发器的时序逻辑",
 }
+
+
+@pytest.mark.parametrize(
+    "question,intent,circuit_type,has_store,clarification",
+    [
+        pytest.param("啥是二极管？", "explain", "concept", False, None, id="explain"),
+        pytest.param("怎么学模电？", "study", "fallback", False, None, id="study"),
+        pytest.param("教材哪节讲二极管？", "locate", "concept", True, None, id="locate"),
+        pytest.param("教材哪节讲二极管？", "locate", "concept", False, None, id="no-index"),
+        pytest.param("这个运放增益多少？", "analyze", "opamp", False,
+                     "能发电路图或贴题干吗？", id="clarify"),
+    ],
+)
+def test_rtr_e2e_002__intent_drives_pipeline(
+    monkeypatch, scripted_client_factory, response_factory, message_factory,
+    tool_call_factory, tiny_vector_data, question, intent, circuit_type,
+    has_store, clarification,
+):
+    """RTR-E2E-002：主意图控制检索、直接解答和澄清。"""
+    arguments = json.dumps({
+        "circuit_type": circuit_type, "intent": intent, "confidence": 0.9,
+        "clarification": clarification,
+    })
+    tool = tool_call_factory("route_circuit", arguments)
+    responses = [response_factory(message_factory(tool_calls=[tool]), finish_reason="tool_calls")]
+    generates = intent in {"explain", "study"} or has_store
+    if generates:
+        responses.append(response_factory(message_factory(content="最终回答")))
+    fake = scripted_client_factory(responses)
+    for module in (router, pipeline, rag, agent):
+        monkeypatch.setattr(module, "get_client", lambda: fake)
+    queries = []
+
+    def encode_query(query):
+        queries.append(query)
+        return np.asarray([1.0, 0.0], dtype="float32")
+
+    monkeypatch.setattr(rag, "encode_query", encode_query)
+    vectors, chunks = tiny_vector_data
+    store = VectorStore(chunks=chunks, vectors=vectors) if has_store else None
+    session = Session()
+    result = pipeline.run(question, store, session=session)
+
+    fake.assert_exhausted()
+    assert fake.calls[0]["tools"] == [router.ROUTE_TOOL]
+    assert queries == ([question] if has_store else [])
+    assert result["intent"] == intent
+    assert result["trace"] is None
+    if generates:
+        expected_prompt = pipeline.LOCATE_PROMPT if has_store else pipeline.DIRECT_PROMPTS[intent]
+        assert expected_prompt in fake.calls[1]["messages"][0]["content"]
+        assert result["answer"] == "最终回答"
+    elif clarification:
+        assert result["answer"] == clarification
+    else:
+        assert "没有可用的资料索引" in result["answer"]
+    assert session.context() == [
+        {"role": "user", "content": question},
+        {"role": "assistant", "content": result["answer"]},
+    ]
+
+
+@pytest.mark.parametrize("intent", [None, "", "typo"])
+def test_rtr_e2e_003__invalid_intent_stops_before_dispatch(
+    monkeypatch, scripted_client_factory, response_factory, message_factory,
+    tool_call_factory, intent,
+):
+    """RTR-E2E-003：非法意图终止分流，历史不变。"""
+    call = tool_call_factory("route_circuit", json.dumps({
+        "circuit_type": "opamp", "confidence": 0.9, "intent": intent,
+    }))
+    fake = scripted_client_factory([
+        response_factory(message_factory(tool_calls=[call]), finish_reason="tool_calls"),
+    ])
+    monkeypatch.setattr(router, "get_client", lambda: fake)
+    session = Session()
+
+    with pytest.raises(RuntimeError, match="无效意图"):
+        pipeline.run("求输出电压", session=session)
+
+    assert fake.call_count == 1
+    fake.assert_exhausted()
+    assert session.context() == []
 
 
 def _router_response(response_factory, message_factory, tool_call_factory, circuit_type):

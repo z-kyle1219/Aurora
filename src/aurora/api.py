@@ -208,7 +208,7 @@ def create_app(database: Path, store: VectorStore | None, *, owner_id: str = "de
             try:
                 result = pipeline.run(body.content, store, session=session)
             except (APIError, RuntimeError) as exc:
-                raise _fail(502, "upstream_error", "助教暂时无法回答") from exc
+                raise _fail(502, "upstream_error", "助教暂时无法回答，请重试") from exc
             if not isinstance(result["answer"], str) or not result["answer"].strip():
                 raise _fail(502, "upstream_error", "助教暂时无法回答")
             response = AssistantReply(

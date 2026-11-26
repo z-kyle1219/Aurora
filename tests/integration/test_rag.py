@@ -195,28 +195,23 @@ def test_rag_int_004__missing_store_raises_explicit_error(monkeypatch):
     assert len(session) == 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="DEF-06 content=None 被写入历史而非抛 RuntimeError",
-)
+@pytest.mark.parametrize("content", [None, "", " \n"])
 def test_rag_int_005__none_content_does_not_pollute_history(
     monkeypatch,
     scripted_client_factory,
     response_factory,
     message_factory,
     tiny_vector_data,
+    content,
 ):
-    """RAG-INT-005：§13-2 已定案——content=None 抛 RuntimeError，Session 长度不变。
-
-    缺陷 DEF-06：当前 answer=None 被 add_turn 写入，历史出现半条空回答。
-    """
+    """RAG-INT-005：空回答抛 RuntimeError，保护会话历史（DEF-06）。"""
     vectors, chunks = tiny_vector_data
     store = VectorStore(chunks=chunks, vectors=vectors)
     session = Session()
     monkeypatch.setattr(pipeline, "route", _route_as_concept)
     monkeypatch.setattr(rag, "encode_query", lambda text: QUERY_VECTOR)
     fake = scripted_client_factory(
-        [response_factory(message_factory(content=None))]
+        [response_factory(message_factory(content=content))]
     )
     monkeypatch.setattr(rag, "get_client", lambda: fake)
 

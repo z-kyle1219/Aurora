@@ -25,7 +25,7 @@
 - `pytest-cov` 未安装，覆盖率不可用
 - `EVL-META-001` 修正口径后已在线执行：幻觉二分类 agreement 100%、kappa 1.000；三档判分 agreement 82.5%、kappa 0.738，仍有 7 条分歧且缺少异源裁判对照；详见 `runs/2026-11-22-stage5-meta.md`
 - DEF-03、DEF-04（Router 非 dict 参数 / confidence 类型契约）为 `Open`，修复后需翻转对应 `xfail(strict=True)`
-- DEF-05~DEF-08（`store=None`、RAG `content=None`、轮数耗尽占位文案、截断带内容当成功）为 `Open`；契约已定案，修复后需翻转对应 `xfail` 并登记关闭证据
+- DEF-05、DEF-07、DEF-08 仍为 `Open`。DEF-06 已关闭，证据见[防御性分流回归](runs/2026-11-26-stage4-defense.md)。
 - 未关闭缺陷见 `DEFECTS.md`，按其「状态」列判断
 
 ## 下一步

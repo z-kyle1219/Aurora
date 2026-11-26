@@ -215,6 +215,8 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 | RTR-E2E-001 | router | E2E | 分类→分支→返回字段一致 | 五类问题各一（fake LLM 按脚本回复） | 返回 dict 七字段齐全；`circuit_type` 与分支产物匹配（`trace`/`hits` 互斥且正确） | 全部 | 离线 fake | P0 |
 | RTR-AI-001 | router | AI Eval | 五类分类质量与混淆 | 分层标注集（同义改写/边界/超纲），≥150 题 | 报告 accuracy、macro-F1、每类 recall、混淆矩阵、置信度校准（ECE） | 真实 DeepSeek | 不 Mock；≥3 次采样取多数 | P0 |
 | RTR-AI-002 | router | AI Eval | 标签定义一致性 | 人工构造"跨类"问题（如"负反馈对运放输出有什么影响"） | 明确该归 `feedback` 还是 `opamp`，形成判定规范；统计"规范歧义题"占比并单列 | 标注规范 | 双人标注 | P2 |
+| RTR-E2E-002 | router→pipeline | E2E | 意图优先分派 | 概念解释、学习指导、资料定位、条件不足的题目分析 | 单次 Router 调用返回意图。直接答和澄清不检索，资料定位检索，缺少索引时给出明确说明。Session 保存原话与答复 | Pipeline、Session | 离线 scripted fake | P0 |
+| RTR-E2E-003 | router→pipeline | E2E | 拒绝非法意图 | 运放分类携带 null、空字符串或未知意图 | 抛 RuntimeError，不触发计算或检索，Session 不变 | Pipeline、Session | 离线 scripted fake | P0 |
 
 ### 6.4 知识入库数据层 `chunker.py` / `card_loader.py` / `embedder.py`
 
@@ -252,7 +254,7 @@ A 类列出的用例若在 `DEFECTS.md` 中查不到对应缺陷，不得计入�
 | RAG-INT-002 | rag | Integration | 自定义提示词生效 | `system_prompt="X"` / `None` | 分别使用 `"X"` 与 `RAG_SYSTEM_PROMPT`；`temperature=0.3` | 同上 | 同上 | P0 |
 | RAG-INT-003 | rag | Integration | top_k 透传 | `top_k=1` / `5` / `0` | 传入 `store.search` 的 k 与返回值长度一致；`k=0` → 空 hits → 走"课件库还是空的"分支 | VectorStore | 假 encoder 返回固定向量 | P1 |
 | RAG-INT-004 | rag→pipeline | Integration | `store=None` 的真实失败面 | Router 判 `concept`，`run(question, None)` | 已定案（2026-11-22，§13 第 1 条）：进入 RAG 分支前显式抛 `ValueError`（消息含 `VectorStore`），不调用 `None.search`，Session 不写回。现状仍为 `AttributeError` → DEF-05，`xfail(strict=True)` 定标 | pipeline | patch Router，其余真实 | P0 |
-| RAG-INT-005 | rag→session | Integration | `content=None` 污染多轮状态 | fake 生成响应 `content=None` | 已定案（§13 第 2 条）：抛 `RuntimeError("模型没有返回有效内容")`，Session 长度不变。现状把 `answer=None` 写入（`len(session)==2`、第二条 `content is None`）→ DEF-06，`xfail(strict=True)` 定标 | pipeline、session | patch Router + `aurora.rag.get_client` | P0 |
+| RAG-INT-005 | rag→session | Integration | 空回答写回保护 | fake 生成响应为 None、空字符串或纯空白 | Pipeline 抛 `RuntimeError("模型没有返回有效内容")`，Session 不变。对应 DEF-06 | pipeline、session | patch Router + `aurora.rag.get_client` | P0 |
 | RAG-INT-006 | rag | Integration | 检索分数非归一化风险 | 未归一化向量入库 | 点积不再等于余弦；记录该前置条件必须在 `embedder` 侧保证 | NumPy | 无 | P2 |
 | RAG-AI-001 | retrieval | AI Eval | 检索质量 | 标注 `query → 相关 chunk/source`，含"无答案"题 | 报告 Recall@1/3/5、MRR、nDCG@5；"无答案误检率"单列；固定索引版本与 hash | 真实 BGE + 冻结索引 | 不 Mock | P0 |
 | RAG-AI-002 | generation | AI Eval | 正确性/忠实度/引用 | concept/feedback/power 代表题 + 片段不足的对抗题 | 报告答案正确率、faithfulness、诚实拒答率、citation precision/recall | 真实 LLM | 不 Mock；规则校验 + 人工抽检 | P0 |

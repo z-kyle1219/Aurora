@@ -103,8 +103,11 @@ pipeline.run(question, store, session)
     │
     ├─ Session.context() 读取历史
     ├─ rewrite_question() 生成 standalone question
-    ├─ router.route() 返回 circuit_type / confidence / reason
+    ├─ router.route() 返回主意图、电路类型和可选追问
     │
+    ├─ explain / study ─► 直接生成概念解释或学习建议
+    ├─ locate ──────────► 根据检索片段核对资料出处
+    ├─ analyze 缺条件 ──► 返回具体追问
     ├─ opamp ──────► run_agent() ─► execute_tool() ─► 物理校验 ─► 最终回答
     ├─ feedback ───► ask_rag()，使用决策树提示词
     ├─ power ──────► ask_rag()，使用链式流程提示词
@@ -137,7 +140,10 @@ pipeline.run(question, store, session)
 
 ### 5.3 Router
 
-`route()` 使用 `tool_choice` 强制模型调用 `route_circuit`，返回以下五种标签之一：
+`route()` 使用 `tool_choice` 强制模型调用 `route_circuit`。一次调用返回主意图
+`intent`（`explain`、`locate`、`study`、`analyze` 或 `out_of_scope`）
+和电路类型 `circuit_type`。分析题缺关键条件时可附带 `clarification`。
+以下电路标签用于题目分析和兼容缺少有效意图的结果：
 
 | 标签 | 处理链路 |
 | --- | --- |
@@ -161,9 +167,13 @@ Router 输出是普通字典：
 
 ### 5.4 分支执行与统一收口
 
-`opamp` 分支将原问题和历史交给 `run_agent()`。其余受支持的知识类问题进入 `ask_rag()`；`fallback` 直接生成模板文本。
+Pipeline 优先按意图分派。概念解释和学习指导使用原问题和历史直接答复。
+资料定位使用 `ask_rag()`，没有可用索引时说明无法核对。分析题有追问时直接返回，
+其余按电路类型选择运放工具、专题 RAG 或通用分析。`out_of_scope` 返回固定模板。
 
-所有分支成功结束后都会经过同一个收口点：先调用 `Session.add_turn()`，再返回统一结果。
+Router 收到显式但非法的意图时抛出 `RuntimeError`，终止分派。
+所有分支在统一收口点检查回答是否为非空文本，通过后调用 `Session.add_turn()` 并返回结果。
+结果在有有效意图时附带 `intent`，有具体追问时附带 `clarification`。
 
 ```python
 {

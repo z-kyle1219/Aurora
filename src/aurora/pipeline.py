@@ -8,7 +8,8 @@
       每一块都只做一件事、都能单独测试；
     - 编排层：本文件，负责「决策」——拿到类型标签后走哪条路、挂什么校验。
 
-五条链路：
+意图优先分派。概念解释和学习指导直接生成，资料定位走 RAG，
+题目缺关键条件时先澄清，其余按电路类型执行：
     opamp    → run_agent（tool use + 电压校验回环，校验器在这里自动挂上）
     feedback → ask_rag + 决策树提示词
     power    → ask_rag + 链式流程提示词
@@ -17,9 +18,15 @@
 """
 
 from aurora.agent import run_agent
+from aurora.config import DEEPSEEK_MODEL, get_client
 from aurora.rag import ask_rag
 from aurora.rewrite import rewrite_question
 from aurora.router import (
+    INTENT_ANALYZE,
+    INTENT_EXPLAIN,
+    INTENT_LOCATE,
+    INTENT_OUT_OF_SCOPE,
+    INTENT_STUDY,
     TYPE_FALLBACK,
     TYPE_FEEDBACK,
     TYPE_OPAMP,
@@ -78,6 +85,35 @@ RAG_PROMPTS = {
     TYPE_POWER: POWER_PROMPT,
 }
 
+DIRECT_PROMPTS = {
+    INTENT_EXPLAIN: "先用通用模电知识解释术语或原理，再按需举例。不要编造教材章节和页码。",
+    INTENT_STUDY: (
+        "按学生的问题给出课程概览或学习顺序与练习建议。"
+        "没有课程大纲时，把内容说明为通用建议，不要编造本课程的章节和安排。"
+    ),
+    INTENT_ANALYZE: (
+        "依据题干和对话中的已知条件分析电路。说明公式适用条件。"
+        "缺少会影响结论的信息时，提出一句具体追问。"
+    ),
+}
+
+LOCATE_PROMPT = """你是 Aurora 模电助教。只用提供的片段定位用户指定的资料。
+核对资料名称、题号或主题，只报告片段来源中明确给出的章节和页码。
+相似片段不能证明找到了指定资料，证据不足时说明未找到可核对的出处。"""
+
+
+def _answer_direct(question: str, history: list[dict], intent: str) -> str | None:
+    messages = [
+        {"role": "system", "content": "你是 Aurora 模电助教。用中文回答。"
+         + DIRECT_PROMPTS[intent]},
+        *history,
+        {"role": "user", "content": question},
+    ]
+    response = get_client().chat.completions.create(
+        model=DEEPSEEK_MODEL, messages=messages, temperature=0.3,
+    )
+    return response.choices[0].message.content
+
 
 def fallback_answer(question: str) -> str:
     """优雅降级：诚实说明「暂不支持」，并给出学习路径（不检索、不装懂）。
@@ -104,6 +140,8 @@ def run(question: str, store: VectorStore | None = None, top_k: int = 3,
     返回一个 dict，统一了不同链路各异的中间产物，方便 demo 和评测取用：
         answer        最终回答
         circuit_type  Router 判出的类型标签
+        intent        Router 判出的主意图（有效时提供）
+        clarification  题目缺少关键条件时的具体追问（有值时提供）
         confidence    分类置信度
         reason        分类理由
         standalone    改写后的独立问题（第一轮 = 原问题）
@@ -126,16 +164,29 @@ def run(question: str, store: VectorStore | None = None, top_k: int = 3,
     standalone = rewrite_question(question, history)
     route_info = route(standalone)
     circuit_type = route_info["circuit_type"]
+    intent = route_info.get("intent")
+    clarification = route_info.get("clarification")
+    trace = hits = None
 
-    if circuit_type == TYPE_OPAMP:
+    if intent == INTENT_OUT_OF_SCOPE or (intent is None and circuit_type == TYPE_FALLBACK):
+        answer = fallback_answer(question)
+    elif intent == INTENT_ANALYZE and clarification:
+        answer = clarification
+    elif intent in {INTENT_EXPLAIN, INTENT_STUDY}:
+        answer = _answer_direct(question, history, intent)
+    elif intent == INTENT_LOCATE:
+        if store is None or not len(store):
+            answer, hits = "当前没有可用的资料索引，暂时无法核对出处。", []
+        else:
+            answer, hits = ask_rag(
+                question, store, top_k=top_k, history=history,
+                query=standalone, system_prompt=LOCATE_PROMPT,
+            )
+    elif circuit_type == TYPE_OPAMP:
         # 只有运放链路挂电压校验；历史只传纯文本对（见 run_agent 的说明）
         answer, trace = run_agent(question, validators=OPAMP_VALIDATORS, history=history)
-        hits = None
-
-    elif circuit_type == TYPE_FALLBACK:
-        # 不检索、不装懂：直接给能力范围 + 学习路径
-        answer, trace, hits = fallback_answer(question), None, None
-
+    elif intent == INTENT_ANALYZE and circuit_type not in RAG_PROMPTS:
+        answer = _answer_direct(question, history, intent)
     else:
         # feedback / power / concept 共用同一套检索能力，只换「怎么引导模型」
         # （查表拿提示词，concept 不在表里 → None → 用 rag.py 的默认提示词）
@@ -145,11 +196,9 @@ def run(question: str, store: VectorStore | None = None, top_k: int = 3,
             query=standalone,
             system_prompt=RAG_PROMPTS.get(circuit_type),
         )
-        trace = None
-
-    # 统一收口：五条分支都在这一个地方写回。
-    # 如果照旧版写五个 early return，就得在五个 return 前各写一遍 add_turn，
-    # 而 fallback 那条最容易被漏掉（它连检索都不走，很容易忘记它也在对话）。
+    # 所有成功分支统一写回。
+    if not isinstance(answer, str) or not answer.strip():
+        raise RuntimeError("模型没有返回有效内容")
     # 注意写回的是学生的**原话**，不是 standalone —— 改写是内部中间产物，
     # 对话记录里只该有人真正说过的话。
     session.add_turn(question, answer)
