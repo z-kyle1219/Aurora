@@ -193,6 +193,23 @@ Router 输出是普通字典：
 
 当前本地索引包含 24 个 Chunk，但该目录被 Git 忽略，不能视为仓库可交付内容。
 
+### 6.1.1 教材索引（第二条建库链路）
+
+`scripts/ocr_textbook.py` + `scripts/build_textbook_index.py` 生成 `data/index-textbook/`，
+与默认索引**并存**：磁盘格式相同，`VectorStore.load()` 通用，`aurora.api` 通过 `--index` 切换。
+
+1. `ocr_textbook.py` 用 pymupdf 渲 300 dpi 灰度页 + tesseract `chi_sim`，逐页写 `data/textbook_ocr/pages/pNNN.txt`，可断点续跑。
+2. `textbook_chunker.build_textbook_chunks()` 以 [教材目录及印刷页码](../data/textbook_toc.txt) 为章节依据，
+   读取分页文本时应用按印刷页码限定的 OCR 校正规则。按页范围取文、在起止页用标题行裁剪，再按语义单元打包成 `Chunk`；`source` 带教材名与印刷页码，`heading` 带章/节。
+3. 区域定位会先跳过页顶 2 行再匹配标题 —— 本书书眉直接印「当前节标题」，与正文标题一字不差。
+4. 「习题」区域不做整段入库，只拆单题并保留题面自足的代表题，题面依赖电路图的题排除。
+5. `build_textbook_index.py` 把教材块 + 课件块 + 公式卡片一起向量化落盘，并用模型自带 tokenizer 统计块长、`VectorStore.load()` 自检行数。
+
+运行 `uv run scripts/report_textbook_coverage.py`，从构建报告生成本地 `data/index-textbook/COVERAGE.md`。
+运行 `uv run python -X utf8 scripts/verify_textbook_index.py`，使用本地 Embedding 检查检索结果。
+UTF-8 模式可避免 Windows 的 GBK 输出无法显示部分 OCR 字符。这两个脚本均不调用聊天 API。
+
+
 ### 6.2 在线检索与生成
 
 `ask_rag()` 的数据流为：

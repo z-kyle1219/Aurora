@@ -92,6 +92,10 @@ aurora/
 │   ├── demo_companion.py  # W1 单轮示例
 │   ├── chat_loop.py       # W1 多轮对话（手动维护 history，未接 Pipeline）
 │   ├── build_index.py     # 离线建库：切块 + 卡片 → 向量化 → 落盘
+│   ├── build_textbook_index.py  # 教材版建库：教材 OCR 块 + 课件 + 卡片 → data/index-textbook
+│   ├── ocr_textbook.py    # 教材扫描件 OCR 预处理（分页文本，断点续跑）
+│   ├── verify_textbook_index.py # 教材索引检索验收（本地 Embedding，不调 API）
+│   ├── report_textbook_coverage.py # 生成逐章逐节覆盖清单
 │   ├── demo_rag.py        # RAG 问答演示
 │   ├── demo_tools.py      # tool use 演示（正常计算 / 超压校验回环）
 │   ├── demo_router.py     # Router 演示（五类各一题看分流）
@@ -104,7 +108,10 @@ aurora/
 │   └── pages/             # 教材切页 PNG（体积大，已 gitignore）
 ├── data/
 │   ├── eval_set.json      # 评测集（12 题，覆盖 5 类）
-│   └── index/             # 向量库产物（已 gitignore，可重建）
+│   ├── textbook_toc.txt   # 教材目录及印刷页码，用于切块与覆盖统计
+│   ├── textbook_ocr/      # 教材 OCR 分页文本产物（已 gitignore，可重建）
+│   ├── index/             # 默认向量库产物（课件 + 卡片，已 gitignore，可重建）
+│   └── index-textbook/    # 教材版向量库产物（教材 + 课件 + 卡片，已 gitignore，可重建）
 ├── AGENTS.md              # 协作约束与已知边界（改代码前先读）
 └── .env.example / pyproject.toml / uv.lock
 ```
@@ -140,6 +147,24 @@ uv run pytest -q
 # 6. 跑评测（需要 API key）
 uv run scripts/eval.py
 ```
+
+### 教材索引（可选，另一套向量库）
+
+教材是扫描件，需要先 OCR 再入库；产物与默认索引并存，互不覆盖。
+
+```bash
+# 1. 教材 OCR（需要 Tesseract 和 chi_sim 语言包）
+uv run scripts/ocr_textbook.py
+
+# 2. 将教材正文、课件和公式卡片写入 data/index-textbook/
+uv run scripts/build_textbook_index.py
+
+# 3. 用教材索引启动服务（不传 --index 时使用 data/index）
+uv run python -m aurora.api --index data/index-textbook
+```
+
+教材原件 `电子技术基础_模拟部分(第六版)_康华光.pdf` 需放在项目上一级，不随仓库分发。
+建库与检索检查的实现见[教材索引建库链路](docs/codebase-overview.md#611-教材索引第二条建库链路)。
 
 > 无 VPN 时下载模型可先设 `HF_ENDPOINT=https://hf-mirror.com`。
 
@@ -303,7 +328,8 @@ opamp 链路有唯一正确答案，「降一级提示后学生是否做对」�
 
 - [x] **W1 学伴 v0**：纯提示词对话，跑通"messages 构造 → 调模型"
 - [x] **W2 RAG**：课件切块 → bge 向量化 → numpy 余弦检索 → 引用回答
-- [x] **W2 收尾 公式卡片**：教材为扫描版无法 OCR，改"切页保真图 + 读图转写"成 8 张结构化卡片，与课件块混入同一向量库
+- [x] **W2 收尾 公式卡片**：教材公式页无法可靠 OCR，改"切页保真图 + 读图转写"成 8 张结构化卡片，与课件块混入同一向量库
+- [x] **教材正文索引**：[建库与启动步骤](#教材索引可选另一套向量库)
 - [x] **W3 tool use**：`calculate_expression`（ast 白名单）+ function calling 回环 + 运放电压校验回环
 - [x] **W3 Router**：LLM 分类五类分流，校验器按类型自动挂载；12 题评测集跑通
 - [x] **W4 正式评测**：`eval_report.py` 多次采样取多数 + LLM-as-judge 判分 + 幻觉率 / 引用命中率 / 延迟
@@ -319,6 +345,7 @@ opamp 链路有唯一正确答案，「降一级提示后学生是否做对」�
 ## 数据来源
 
 - 课件：大连理工大学《模拟电子技术》课程 PPT（10 份），经 markitdown 转为 markdown 作为检索语料。
-- 教材：《电子技术基础·模拟部分》（第六版，康华光），扫描版仅用于公式核对与卡片转写，不随仓库分发。
+- 教材：《电子技术基础·模拟部分》（第六版，康华光），扫描件（无文字层）。正文经 OCR 进入 `data/index-textbook`，
+  公式与电路图仍以读图转写的公式卡片为准；原件不随仓库分发。
 
 仅供教学与个人学习使用。
