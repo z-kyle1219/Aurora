@@ -85,8 +85,11 @@ aside { background: #101212; border-right: 1px solid var(--line); padding: 20px 
 .new-chat { margin-top: 28px; width: 100%; text-align: left; border: 1px solid #3e6558; border-radius: 8px; background: #19302a; padding: 10px 12px; color: #b6f4df; }
 aside h2 { font-size: 13px; font-weight: 500; color: var(--muted); margin: 27px 8px 9px; }
 nav { display: grid; gap: 3px; }
+.history-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px; }
 nav button { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 0; border-radius: 7px; background: transparent; padding: 9px; font-size: 14px; }
 nav button[aria-current], nav button:hover:not(:disabled) { background: #252b28; }
+nav .delete-chat { color: var(--muted); }
+nav .delete-chat:hover:not(:disabled), nav .delete-chat:focus-visible { color: #ffb4ae; }
 main { min-height: 0; min-width: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 header { display: flex; align-items: center; gap: 10px; min-height: 61px; padding: 0 26px; border-bottom: 1px solid var(--line); font-weight: 650; }
 .icon-button { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 8px; background: #262c2a; }

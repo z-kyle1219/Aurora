@@ -190,11 +190,12 @@ function setBusy(value, message = "") {
   newChat.disabled = value;
   send.disabled = value || needsReload;
   question.readOnly = value;
-  for (const button of [...history.children, ...examples]) button.disabled = value;
+  for (const button of [...history.querySelectorAll("button"), ...examples]) button.disabled = value;
 }
 
 async function request(url, options) {
   const response = await fetch(url, options);
+  if (response.status === 204) return;
   const body = await response.json();
   if (!response.ok) {
     const error = new Error(body.error?.message || "请求失败");
@@ -222,7 +223,13 @@ function renderHistory() {
     button.title = title;
     if (session.session_id === active) button.setAttribute("aria-current", "true");
     button.addEventListener("click", () => openChat(session.session_id));
-    history.append(button);
+    const remove = element("button", "delete-chat", "删除");
+    remove.disabled = busy;
+    remove.setAttribute("aria-label", `删除会话：${title}`);
+    remove.addEventListener("click", () => deleteChat(session.session_id));
+    const row = element("div", "history-row");
+    row.append(button, remove);
+    history.append(row);
   }
 }
 
@@ -297,6 +304,32 @@ async function createChat() {
   needsReload = false;
   renderHistory();
   renderTurns();
+}
+
+async function deleteChat(id) {
+  if (busy || !window.confirm("删除此会话及其中的全部消息？此操作无法撤销。")) return;
+  setBusy(true, "正在删除会话…");
+  let feedback = "";
+  try {
+    await request(`${api}/${encodeURIComponent(id)}`, { method: "DELETE" });
+  } catch (error) {
+    if (error.code !== "session_not_found") {
+      setBusy(false, error.code ? error.message : "无法确认删除结果，请刷新页面查看");
+      return;
+    }
+    feedback = "该会话已不存在";
+  }
+  sessions = sessions.filter(({ session_id }) => session_id !== id);
+  if (active === id) {
+    active = null;
+    turns = [];
+    question.value = "";
+    needsReload = false;
+    renderTurns();
+  }
+  renderHistory();
+  setBusy(false, feedback);
+  newChat.focus();
 }
 
 newChat.addEventListener("click", async () => {
