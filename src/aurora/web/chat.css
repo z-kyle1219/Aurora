@@ -156,6 +156,16 @@ form { padding-bottom: max(18px, env(safe-area-inset-bottom)); }
 #status { color: #f4ca93; font-size: 14px; margin: 0 0 6px; }
 #status:empty { display: none; }
 .input-row { display: flex; gap: 10px; align-items: end; background: #1e2321; border: 1px solid var(--line); border-radius: 8px; padding: 9px; }
+.attach { flex: none; cursor: pointer; font-size: 24px; }
+#image-selection { color: var(--muted); font-size: 14px; padding: 4px 0 8px; }
+.image-draft { border-top: 1px solid var(--line); padding: 12px 0; }
+.draft-heading { display: flex; justify-content: space-between; align-items: center; }
+.draft-heading button { background: transparent; border: 0; font-size: 22px; }
+#draft-warning { color: #f4ca93; font-size: 14px; margin: 6px 0; }
+#draft-text { display: block; width: 100%; background: #1e2321; border: 1px solid var(--line); border-radius: 6px; padding: 8px; color: inherit; }
+#draft-verified-label { display: block; margin-top: 8px; font-size: 14px; }
+#draft-verified-label[hidden] { display: none; }
+#confirm-draft { margin-top: 8px; background: #275746; border: 1px solid #4f9b7b; border-radius: 6px; padding: 6px 10px; }
 textarea { width: 100%; min-width: 0; max-height: 140px; padding: 6px; resize: vertical; border: 0; background: transparent; color: inherit; }
 .send { flex: none; background: var(--mint); color: #10231c; font-size: 23px; font-weight: 700; }
 @media (max-width: 700px) {

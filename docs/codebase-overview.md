@@ -72,6 +72,7 @@ aurora/
 | `rag.py` | `ask_rag()` | 检索、拼接上下文并调用模型生成回答 |
 | `companion_v0.py` | `ask()`、`ask_stream()` | 早期直连模型的单轮/流式聊天能力 |
 | `config.py` | `get_client()` | 读取 DeepSeek 配置并创建 OpenAI 兼容客户端 |
+| `vision.py` | `extract_circuit()` | 在聊天 API 输入边界将图片提取为可检查的文字草稿，不参与 Pipeline 编排 |
 
 ### 4.2 知识库与检索
 
@@ -354,11 +355,15 @@ class Session:
 
 ## 10. 配置管理
 
+聊天 API 的图片输入先由 `vision.py` 调用独立的 OpenAI 兼容视觉服务，返回可编辑文字草稿。关键参数、连接或极性不明确时，前端要求学生核对后才将确认文字送入 `pipeline.run()`；图片与未确认草稿不写入 Session。清晰图片由前端自动提交文字描述。视觉识别质量尚无真实图片基线。
+
 `config.py` 在模块导入时执行 `load_dotenv()`，然后读取：
 
 - `DEEPSEEK_API_KEY`：必填。
 - `DEEPSEEK_BASE_URL`：默认 `https://api.deepseek.com`。
 - `DEEPSEEK_MODEL`：默认 `deepseek-chat`。
+
+图片识别另需 `VISION_API_KEY`、`VISION_MODEL`，可设置 `VISION_BASE_URL` 指向兼容服务。它们在每次识别时读取，缺失时图片识别失败，不影响纯文字提问。
 
 缺少 API key 时，`get_client()` 抛出 `RuntimeError`。`.env` 已加入 `.gitignore`，仓库只保留 `.env.example`。
 

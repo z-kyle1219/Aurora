@@ -17,12 +17,15 @@
 | `POST /api/v1/sessions` | `201`，`{"session_id":"<uuid>"}` | 创建空会话，由服务端生成 ID |
 | `GET /api/v1/sessions` | `200`，`{"sessions":[{"session_id":"<uuid>","title":"<摘要>"}]}` | 列出当前用户的会话，并带上首条提问摘要，便于打开前辨认 |
 | `POST /api/v1/sessions/{session_id}/messages` | `200`，本轮助教回答 | 提问或追问 |
+| `POST /api/v1/sessions/{session_id}/images` | `200`，识别草稿 | 提取电路图，不写会话历史 |
 | `GET /api/v1/sessions/{session_id}/messages` | `200`，`{"messages":[...]}` | 按写入顺序读取文字历史，新会话返回空数组 |
 | `DELETE /api/v1/sessions/{session_id}` | `204` | 删除会话和历史 |
 | `GET /health` | `200`，`{"status":"ok"}` | 检查服务进程能否响应 |
 | `GET /ready` | `200`，`{"status":"ready"}` | 检查本地索引和服务配置的初始化状态 |
 
 发送消息的请求体为 `{"content":"那把 R1 换成 20k 呢？"}`。`content` 必须是字符串且去除首尾空白后非空。校验通过后，原始文本进入 Pipeline 和会话历史。
+
+图片识别请求为 `{"image":"data:image/png;base64,...","content":"可选的学生问题"}`，支持 PNG、JPEG、WebP，解码后最大 5 MB。返回 `text`（按题干、元件参数、连接关系、电源极性排列）、`uncertainties`（内容、原因、影响解题）和 `requires_confirmation`。前端展示可编辑草稿；关键条件不确定时必须等待学生确认，确认前不调用 Pipeline，也不保存图片或识别草稿。清晰图片可自动把草稿与问题组合后提交文字消息。视觉模型需要单独配置，未配置或响应无效时不提交文字消息。
 
 会话列表中的 `title` 取自该会话第一条学生提问：合并连续空白后最多保留 60 个字符，超出部分以省略号结尾；尚未提问的会话为 `null`。它只是侧栏的识别标签，不参与检索和模型上下文，也不引入额外的模型调用。列表顺序仍是最新建的在前。
 

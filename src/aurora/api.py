@@ -19,7 +19,7 @@ from openai import APIError
 from pydantic import BaseModel, StrictStr, field_validator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from aurora import config, pipeline
+from aurora import config, pipeline, vision
 from aurora.session import Session
 from aurora.vector_store import VectorStore
 
@@ -36,6 +36,17 @@ class MessageInput(BaseModel):
         if not value.strip():
             raise ValueError("请输入有效的消息文本")
         return value
+
+
+class ImageInput(BaseModel):
+    image: StrictStr
+    content: StrictStr = ""
+
+
+class ImageDraft(BaseModel):
+    text: str
+    uncertainties: list[dict[str, str | bool]]
+    requires_confirmation: bool
 
 
 class RetrievalSource(BaseModel):
@@ -98,6 +109,7 @@ def create_app(database: Path, store: VectorStore | None, *, owner_id: str = "de
     lock = Lock()
     sessions = "/api/v1/sessions"
     messages = sessions + "/{session_id}/messages"
+    images = sessions + "/{session_id}/images"
 
     @app.middleware("http")
     async def local_requests(request: Request, call_next):
@@ -116,6 +128,15 @@ def create_app(database: Path, store: VectorStore | None, *, owner_id: str = "de
                 0 < int(length) <= _MAX_BODY
             ):
                 return _error(422, "invalid_request", "请输入有效的消息文本")
+        if request.method == "POST" and re.fullmatch(
+            r"/api/v1/sessions/[^/]+/images", request.url.path,
+        ):
+            mime = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+            length = request.headers.get("content-length", "")
+            if mime != "application/json" or not length.isdecimal() or not (
+                0 < int(length) <= 7 * 1024 * 1024
+            ):
+                return _error(422, "invalid_image", "图片请求无效或超过大小限制")
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
         return response
@@ -199,6 +220,19 @@ def create_app(database: Path, store: VectorStore | None, *, owner_id: str = "de
     def get_messages(session_id: str) -> dict:
         with lock, closing(sqlite3.connect(database)) as db:
             return {"messages": read_history(db, session_id)}
+
+    @app.post(images)
+    def inspect_image(session_id: str, body: ImageInput) -> ImageDraft:
+        with lock, closing(sqlite3.connect(database)) as db:
+            read_history(db, session_id)
+            require_ready()
+            try:
+                draft = vision.extract_circuit(body.image, body.content)
+            except ValueError as exc:
+                raise _fail(422, "invalid_image", str(exc)) from exc
+            except (APIError, RuntimeError) as exc:
+                raise _fail(502, "upstream_error", "电路图识别失败，请重试") from exc
+            return ImageDraft(**vars(draft))
 
     @app.post(messages)
     def send_message(session_id: str, body: MessageInput) -> AssistantReply:

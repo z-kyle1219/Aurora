@@ -10,15 +10,15 @@
 | 阶段 1 纯逻辑 P0 | `Passed` | `runs/2026-11-21-stage1.md` |
 | 阶段 2 结构化协议与失败路径 | `Passed` | `runs/2026-11-22-stage2.md` |
 | 阶段 3 编排与多轮 | `Passed` | `runs/2026-11-22-stage3.md` |
-| 阶段 4 离线 E2E | `Passed` | `runs/2026-11-22-stage4.md` |
+| 阶段 4 离线 E2E | `Passed` | `runs/2026-11-27-stage4-vision.md` |
 | 阶段 5 AI Evaluation | `Needs Review` | `runs/2026-11-22-stage5-meta.md`；仅元评估已执行，整阶段未验收 |
 | 阶段 6 CI | `Not Executed` | 尚未实施 |
 
 ## 最近一次验收
 
-- 日期：2026-11-22
-- revision：`fe8206a`
-- 验收记录：`runs/2026-11-22-stage4.md`
+- 日期：2026-11-27
+- revision：`5f1f1e6` 工作区修改
+- 验收记录：`runs/2026-11-27-stage4-vision.md`
 
 ## 当前阻塞
 

@@ -7,6 +7,14 @@ const welcome = byId("welcome");
 const composer = byId("composer");
 const question = byId("question");
 const send = byId("send");
+const imageFile = byId("image-file");
+const imageSelection = byId("image-selection");
+const imageDraft = byId("image-draft");
+const draftText = byId("draft-text");
+const draftWarning = byId("draft-warning");
+const confirmDraft = byId("confirm-draft");
+const draftVerified = byId("draft-verified");
+const draftVerifiedLabel = byId("draft-verified-label");
 const status = byId("status");
 const menu = byId("menu");
 const newChat = byId("new-chat");
@@ -189,6 +197,9 @@ function setBusy(value, message = "") {
   status.textContent = message;
   newChat.disabled = value;
   send.disabled = value || needsReload;
+  imageFile.disabled = value || needsReload;
+  confirmDraft.disabled = value || needsReload;
+  draftText.readOnly = value;
   question.readOnly = value;
   for (const button of [...history.querySelectorAll("button"), ...examples]) button.disabled = value;
 }
@@ -207,6 +218,21 @@ async function request(url, options) {
 
 function messagePath(id) {
   return `${api}/${encodeURIComponent(id)}/messages`;
+}
+
+function clearImage() {
+  imageFile.value = "";
+  imageSelection.hidden = true;
+  imageDraft.hidden = true;
+}
+
+function readImage(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("无法读取图片"));
+    reader.readAsDataURL(file);
+  });
 }
 
 function toggleMenu(open) {
@@ -292,6 +318,7 @@ async function openChat(id) {
   try {
     const { messages: saved } = await request(messagePath(id));
     if (active !== id) question.value = "";
+    clearImage();
     active = id;
     needsReload = false;
     turns = saved;
@@ -310,6 +337,7 @@ async function createChat() {
   active = session_id;
   sessions.unshift({ session_id });
   turns = [];
+  clearImage();
   needsReload = false;
   renderHistory();
   renderTurns();
@@ -333,6 +361,7 @@ async function deleteChat(id) {
     active = null;
     turns = [];
     question.value = "";
+    clearImage();
     needsReload = false;
     renderTurns();
   }
@@ -363,11 +392,8 @@ question.addEventListener("keydown", (event) => {
   composer.requestSubmit();
 });
 
-composer.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const content = question.value;
+async function submitText(content) {
   if (busy || needsReload || !content.trim()) return;
-  question.value = "";
   setBusy(true, "Aurora 正在回答…");
   let feedback = "";
   let sent = false;
@@ -382,7 +408,6 @@ composer.addEventListener("submit", async (event) => {
     });
     turns.push({ role: "user", content }, reply);
   } catch (error) {
-    question.value = content;
     feedback = error.code ? error.message : "请求中断，请重试";
     if (error.code === "service_not_ready") feedback += "，请检查本地课件索引和模型配置";
     if (sent && !error.code) {
@@ -405,6 +430,77 @@ composer.addEventListener("submit", async (event) => {
     renderTurns();
     setBusy(false, feedback);
     question.focus();
+  }
+  return !feedback;
+}
+
+imageFile.addEventListener("change", () => {
+  const file = imageFile.files[0];
+  imageSelection.hidden = !file;
+  imageSelection.textContent = file ? `已选择：${file.name}` : "";
+  imageDraft.hidden = true;
+});
+
+byId("dismiss-draft").addEventListener("click", () => { imageDraft.hidden = true; });
+
+confirmDraft.addEventListener("click", async () => {
+  const content = draftText.value.trim();
+  if (!content || busy) return;
+  if (!draftVerifiedLabel.hidden && !draftVerified.checked) {
+    status.textContent = "请先核对并补全关键条件";
+    return;
+  }
+  const submitted = await submitText(content);
+  if (submitted) imageDraft.hidden = true;
+});
+
+composer.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (busy || needsReload) return;
+  const file = imageFile.files[0];
+  const content = question.value;
+  if (!file) {
+    if (!content.trim()) return;
+    question.value = "";
+    if (!await submitText(content)) question.value = content;
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024 || !["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+    status.textContent = "请选择不超过 5 MB 的 PNG、JPEG 或 WebP 图片";
+    return;
+  }
+  setBusy(true, "正在识别电路图…");
+  let draft;
+  try {
+    if (!active) await createChat();
+    const image = await readImage(file);
+    draft = await request(`${api}/${encodeURIComponent(active)}/images`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image, content }),
+    });
+  } catch (error) {
+    setBusy(false, error.code ? error.message : "识别失败，请重试");
+    return;
+  }
+  setBusy(false);
+  const prompt = content.trim() || "请分析这道电路题";
+  draftText.value = `学生问题：${prompt}\n根据上传图片提取的电路描述：\n${draft.text}`;
+  draftWarning.textContent = draft.uncertainties.length
+    ? draft.uncertainties.map((item) => `${item.影响解题 ? "需确认" : "留意"}：${item.内容}（${item.原因}）`).join("；")
+    : "";
+  imageDraft.hidden = false;
+  draftVerified.checked = false;
+  draftVerifiedLabel.hidden = !draft.requires_confirmation;
+  confirmDraft.textContent = "确认描述并提问";
+  imageFile.value = "";
+  imageSelection.hidden = true;
+  question.value = "";
+  if (draft.requires_confirmation) {
+    status.textContent = "请核对并修改关键条件，再确认提问";
+    draftText.focus();
+  } else {
+    if (await submitText(draftText.value)) confirmDraft.textContent = "按修改后的描述重新提问";
   }
 });
 

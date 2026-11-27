@@ -1,6 +1,7 @@
 """本机聊天 HTTP 契约与 SQLite 集成测试。"""
 
 import json
+import base64
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
@@ -10,8 +11,11 @@ import pytest
 from anyio.from_thread import start_blocking_portal
 from fastapi.testclient import TestClient
 
-from aurora import api, rag, rewrite, router
+from aurora import api, rag, rewrite, router, vision
 from aurora.vector_store import VectorStore
+
+
+IMAGE = "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\nexample").decode("ascii")
 
 
 @pytest.fixture(scope="module")
@@ -229,4 +233,52 @@ def test_api_int_006__session_list_shows_question_summary(tmp_path, http_request
         {"session_id": verbose["session_id"], "title": long_question[:59] + "…"},
         {"session_id": brief["session_id"], "title": "反相比例电路的增益怎么算？"},
         {"session_id": empty["session_id"], "title": None},
+    ]
+
+
+def test_api_int_007__image_draft_requires_confirmation_without_history(
+    tmp_path, monkeypatch, http_request, scripted_client_factory, response_factory, message_factory,
+):
+    """API-INT-007：图片校验、视觉请求和关键歧义均不写会话。"""
+    fake = scripted_client_factory([response_factory(message_factory(content=json.dumps({
+        "题干": "求输出电压", "元件参数": ["R1=10kΩ"],
+        "连接关系": "运放输入端连接看不清", "电源极性": "±15V",
+        "不确定项": [{"内容": "反相输入端连接", "原因": "线条遮挡", "影响解题": True}],
+    }, ensure_ascii=False)))])
+    monkeypatch.setenv("VISION_API_KEY", "dummy")
+    monkeypatch.setenv("VISION_MODEL", "vision-test")
+    monkeypatch.setattr(vision, "OpenAI", lambda **kwargs: fake)
+    app = api.create_app(tmp_path / "chat.sqlite3", VectorStore())
+    session_id = http_request(app, "POST", "/api/v1/sessions")[1]["session_id"]
+    path = f"/api/v1/sessions/{session_id}"
+    assert http_request(app, "POST", f"{path}/images", {"image": "data:image/png;base64,abcd"})[0] == 422
+    assert fake.call_count == 0
+    status, draft = http_request(app, "POST", f"{path}/images", {"image": IMAGE, "content": "怎么算？"})
+    assert status == 200
+    assert draft["requires_confirmation"] is True
+    assert "R1=10kΩ" in draft["text"]
+    assert fake.last_call["model"] == "vision-test"
+    assert fake.last_call["messages"][1]["content"][1]["image_url"]["url"] == IMAGE
+    assert http_request(app, "GET", f"{path}/messages") == (200, {"messages": []})
+    fake.assert_exhausted()
+
+
+def test_api_int_008__confirmed_draft_uses_text_pipeline(tmp_path, monkeypatch, http_request):
+    """API-INT-008：确认后的描述沿原文字链路成对写回。"""
+    app = api.create_app(tmp_path / "chat.sqlite3", VectorStore())
+    session_id = http_request(app, "POST", "/api/v1/sessions")[1]["session_id"]
+    path = f"/api/v1/sessions/{session_id}/messages"
+    seen = []
+
+    def answer(question, store, *, session):
+        seen.append(question)
+        session.add_turn(question, "计算结果")
+        return {"answer": "计算结果", "circuit_type": "opamp", "hits": []}
+
+    monkeypatch.setattr(api.pipeline, "run", answer)
+    content = "学生问题：求输出\n根据上传图片提取的电路描述：\n连接关系：R1 接反相端"
+    assert http_request(app, "POST", path, {"content": content})[0] == 200
+    assert seen == [content]
+    assert http_request(app, "GET", path)[1]["messages"] == [
+        {"role": "user", "content": content}, {"role": "assistant", "content": "计算结果"},
     ]
